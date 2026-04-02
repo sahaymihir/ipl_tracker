@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     user: null,
     bets: [],
     stats: null,
-    filter: 'all'
+    filter: 'all',
+    editingBetId: null
   }
 
   const elements = {
@@ -49,6 +50,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     accountSummaryBar: document.getElementById('account-summary-bar'),
     drawer: document.getElementById('entry-drawer'),
     drawerScrim: document.getElementById('entry-drawer-scrim'),
+    drawerKicker: document.getElementById('drawer-kicker'),
+    drawerTitle: document.getElementById('drawer-title'),
+    drawerCopy: document.getElementById('drawer-copy'),
     openDrawerButtons: document.querySelectorAll('[data-open-drawer]'),
     closeDrawer: document.getElementById('entry-drawer-close'),
     cancelDrawer: document.getElementById('bet-cancel'),
@@ -153,24 +157,79 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function openDrawer() {
-    elements.drawer.classList.add('is-open')
-    elements.drawer.setAttribute('aria-hidden', 'false')
-    elements.formDate.value = new Date().toISOString().split('T')[0]
-    document.body.style.overflow = 'hidden'
+  function setDrawerMode(mode, bet) {
+    const isEditing = mode === 'edit' && bet
+
+    state.editingBetId = isEditing ? bet.id : null
+    elements.drawerKicker.textContent = isEditing ? 'Edit Pending Bet' : 'Log Entry'
+    elements.drawerTitle.textContent = isEditing ? 'Update pending transaction' : 'New bet transaction'
+    elements.drawerCopy.textContent = isEditing
+      ? 'Adjust the pending bet or add the final banaya value to settle it.'
+      : 'Insert directly into the `bets` table and let Supabase compute the generated result fields.'
+    elements.submit.textContent = isEditing ? 'Save changes' : 'Log entry'
   }
 
-  function closeDrawer() {
-    elements.drawer.classList.remove('is-open')
-    elements.drawer.setAttribute('aria-hidden', 'true')
-    document.body.style.overflow = ''
+  function findBetById(betId) {
+    return state.bets.find((bet) => String(bet.id) === String(betId)) || null
+  }
+
+  function resetDrawerForm() {
     elements.form.reset()
     elements.formDate.value = new Date().toISOString().split('T')[0]
     elements.projectedNet.textContent = 'Pending'
     elements.projectedNet.className = 'detail-value value-pending'
     elements.formError.hidden = true
     elements.submit.disabled = false
-    elements.submit.textContent = 'Log entry'
+    setDrawerMode('create')
+  }
+
+  function fillDrawerForm(bet) {
+    elements.formDate.value = bet.date || new Date().toISOString().split('T')[0]
+    elements.formMatch.value = bet.match_label || ''
+    elements.formLagaya.value = bet.lagaya == null ? '' : String(bet.lagaya)
+    elements.formBanaya.value = bet.banaya == null ? '' : String(bet.banaya)
+    updateProjectedNet()
+    elements.formError.hidden = true
+    elements.submit.disabled = false
+  }
+
+  function openDrawer(options) {
+    const settings = options || {}
+    const bet = settings.bet || null
+
+    if (bet) {
+      setDrawerMode('edit', bet)
+      fillDrawerForm(bet)
+    } else {
+      resetDrawerForm()
+    }
+
+    elements.drawer.classList.add('is-open')
+    elements.drawer.setAttribute('aria-hidden', 'false')
+    document.body.style.overflow = 'hidden'
+  }
+
+  function openEditDrawer(betId) {
+    const bet = findBetById(betId)
+
+    if (!bet) {
+      showStatus('That bet could not be found anymore. Refresh and try again.', 'error')
+      return
+    }
+
+    if (app.getResult(bet) !== 'pending') {
+      showStatus('Only pending bets can be edited from this view.', 'info')
+      return
+    }
+
+    openDrawer({ bet })
+  }
+
+  function closeDrawer() {
+    elements.drawer.classList.remove('is-open')
+    elements.drawer.setAttribute('aria-hidden', 'true')
+    document.body.style.overflow = ''
+    resetDrawerForm()
 
     if ((window.location.hash || '') === '#new-entry') {
       history.replaceState({}, '', app.pageHref('dashboard'))
@@ -333,6 +392,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const label = app.escapeHtml(fallbackLabel(bet, index))
       const returnValue = bet.banaya == null ? 'Awaiting' : `₹${app.formatAmount(bet.banaya)}`
       const netValue = result === 'pending' ? 'Pending' : formatSigned(net, false)
+      const actions = result === 'pending'
+        ? `
+          <div class="ledger-row-actions">
+            <button class="text-button entry-inline-button" data-edit-bet="${bet.id}" type="button">Edit</button>
+            <span class="result-pill ${result}">${result}</span>
+          </div>
+        `
+        : `<span class="result-pill ${result}">${result}</span>`
 
       return `
         <article class="ledger-row ${result}">
@@ -350,7 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span class="ledger-row-label">Net</span>
             <strong class="ledger-row-value ${result === 'pending' ? 'value-pending' : net >= 0 ? 'value-positive' : 'value-negative'}">${netValue}</strong>
           </div>
-          <span class="result-pill ${result}">${result}</span>
+          ${actions}
         </article>
       `
     }).join('')
@@ -379,7 +446,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             <h3 class="feed-title">${app.escapeHtml(fallbackLabel(bet, index))}</h3>
             <p class="feed-caption">This entry is still waiting on a final return.</p>
           </div>
-          <span class="result-pill pending">Pending</span>
+          <div class="feed-head-actions">
+            <button class="text-button entry-inline-button" data-edit-bet="${bet.id}" type="button">Edit</button>
+            <span class="result-pill pending">Pending</span>
+          </div>
         </div>
         <div class="detail-grid">
           <div class="detail-card">
@@ -465,6 +535,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function handleSubmit(event) {
     event.preventDefault()
+    const wasEditing = Boolean(state.editingBetId)
 
     const lagaya = parseFloat(elements.formLagaya.value)
     const banayaValue = elements.formBanaya.value
@@ -486,18 +557,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     elements.formError.hidden = true
     elements.submit.disabled = true
-    elements.submit.textContent = 'Logging...'
+    elements.submit.textContent = wasEditing ? 'Saving...' : 'Logging...'
 
-    const { error } = await client.from('bets').insert({
-      user_id: state.user.id,
+    const payload = {
       date,
       lagaya,
       banaya,
       match_label: matchLabel
-    })
+    }
+
+    const { error } = state.editingBetId
+      ? await client
+        .from('bets')
+        .update(payload)
+        .eq('id', state.editingBetId)
+        .eq('user_id', state.user.id)
+      : await client
+        .from('bets')
+        .insert({
+          user_id: state.user.id,
+          ...payload
+        })
 
     elements.submit.disabled = false
-    elements.submit.textContent = 'Log entry'
+    elements.submit.textContent = wasEditing ? 'Save changes' : 'Log entry'
 
     if (error) {
       elements.formError.hidden = false
@@ -508,7 +591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     closeDrawer()
-    showStatus('Entry logged successfully.', 'success')
+    showStatus(wasEditing ? 'Bet updated successfully.' : 'Entry logged successfully.', 'success')
     await refresh()
   }
 
@@ -539,6 +622,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   elements.closeDrawer.addEventListener('click', closeDrawer)
   elements.cancelDrawer.addEventListener('click', closeDrawer)
   elements.drawerScrim.addEventListener('click', closeDrawer)
+  elements.activityList.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-edit-bet]')
+    if (!button) return
+    openEditDrawer(button.dataset.editBet)
+  })
+  elements.liveList.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-edit-bet]')
+    if (!button) return
+    openEditDrawer(button.dataset.editBet)
+  })
   elements.formLagaya.addEventListener('input', updateProjectedNet)
   elements.formBanaya.addEventListener('input', updateProjectedNet)
   elements.form.addEventListener('submit', handleSubmit)

@@ -775,6 +775,22 @@ button {
   font-size: 0.92rem;
 }
 
+.ledger-row-actions,
+.feed-head-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.entry-inline-button {
+  padding: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+
 .feed-head,
 .feed-body,
 .feed-foot,
@@ -1748,6 +1764,11 @@ button {
   .ledger-row-title {
     grid-column: 1 / -1;
     white-space: normal;
+  }
+
+  .ledger-row-actions {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .ledger-row-stat {
