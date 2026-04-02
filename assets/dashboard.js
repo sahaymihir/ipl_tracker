@@ -331,35 +331,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       const result = app.getResult(bet)
       const net = Number(bet.net_profit || 0)
       const label = app.escapeHtml(fallbackLabel(bet, index))
-      const settled = result !== 'pending'
       const returnValue = bet.banaya == null ? 'Awaiting' : `₹${app.formatAmount(bet.banaya)}`
+      const netValue = result === 'pending' ? 'Pending' : formatSigned(net, false)
 
       return `
-        <article class="feed-card ${result}">
-          <div class="feed-head">
-            <div>
-              <div class="eyebrow">${app.formatDate(bet.date)}</div>
-              <h3 class="feed-title">${label}</h3>
-              <p class="feed-caption">${settled ? 'Settled directly from Supabase generated columns.' : 'Pending outcome, exposure still open.'}</p>
-            </div>
-            <span class="result-pill ${result}">${result}</span>
+        <article class="ledger-row ${result}">
+          <div class="ledger-row-date">${app.formatDate(bet.date)}</div>
+          <div class="ledger-row-title" title="${label}">${label}</div>
+          <div class="ledger-row-stat">
+            <span class="ledger-row-label">Lagaya</span>
+            <strong class="ledger-row-value">₹${app.formatAmount(bet.lagaya)}</strong>
           </div>
-          <div class="detail-grid">
-            <div class="detail-card">
-              <span class="meta-label">Lagaya</span>
-              <strong class="detail-value">₹${app.formatAmount(bet.lagaya)}</strong>
-            </div>
-            <div class="detail-card">
-              <span class="meta-label">Banaya</span>
-              <strong class="detail-value ${settled ? '' : 'value-pending'}">${returnValue}</strong>
-            </div>
-            <div class="detail-card">
-              <span class="meta-label">Net</span>
-              <strong class="detail-value ${result === 'pending' ? 'value-pending' : net >= 0 ? 'value-positive' : 'value-negative'}">
-                ${result === 'pending' ? 'Pending' : formatSigned(net, false)}
-              </strong>
-            </div>
+          <div class="ledger-row-stat">
+            <span class="ledger-row-label">Banaya</span>
+            <strong class="ledger-row-value ${result === 'pending' ? 'value-pending' : ''}">${returnValue}</strong>
           </div>
+          <div class="ledger-row-stat">
+            <span class="ledger-row-label">Net</span>
+            <strong class="ledger-row-value ${result === 'pending' ? 'value-pending' : net >= 0 ? 'value-positive' : 'value-negative'}">${netValue}</strong>
+          </div>
+          <span class="result-pill ${result}">${result}</span>
         </article>
       `
     }).join('')
