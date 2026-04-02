@@ -79,6 +79,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function setTextContent(element, value) {
+    if (!element) return
+    element.textContent = value
+  }
+
   function setStatus(message, tone) {
     if (!message) {
       elements.status.hidden = true
@@ -108,16 +113,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.fullNameGroup.classList.toggle('hidden', !isSignup)
     elements.confirmGroup.classList.toggle('hidden', !isSignup)
     elements.termsGroup.classList.toggle('hidden', !isSignup)
-    elements.previewEyebrow.textContent = copy.eyebrow
-    elements.previewTitle.textContent = copy.title
-    elements.previewCopy.textContent = copy.copy
-    elements.previewPrimaryLabel.textContent = copy.primaryLabel
-    elements.previewPrimaryValue.textContent = copy.primaryValue
-    elements.previewSecondaryLabel.textContent = copy.secondaryLabel
-    elements.previewSecondaryValue.textContent = copy.secondaryValue
-    elements.previewTickerA.textContent = copy.tickerA
-    elements.previewTickerB.textContent = copy.tickerB
-    elements.previewTickerC.textContent = copy.tickerC
+    setTextContent(elements.previewEyebrow, copy.eyebrow)
+    setTextContent(elements.previewTitle, copy.title)
+    setTextContent(elements.previewCopy, copy.copy)
+    setTextContent(elements.previewPrimaryLabel, copy.primaryLabel)
+    setTextContent(elements.previewPrimaryValue, copy.primaryValue)
+    setTextContent(elements.previewSecondaryLabel, copy.secondaryLabel)
+    setTextContent(elements.previewSecondaryValue, copy.secondaryValue)
+    setTextContent(elements.previewTickerA, copy.tickerA)
+    setTextContent(elements.previewTickerB, copy.tickerB)
+    setTextContent(elements.previewTickerC, copy.tickerC)
     elements.formTitle.textContent = copy.formTitle
     elements.formCopy.textContent = copy.formCopy
     elements.switchLabel.textContent = copy.switchLabel

@@ -2,13 +2,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const app = window.SattaSheetApp
   const runtime = app.createSupabaseClient()
   const client = runtime.client
+  const RECENT_BETS_STEP = 5
 
   const state = {
     user: null,
     bets: [],
     stats: null,
     filter: 'all',
-    editingBetId: null
+    editingBetId: null,
+    visibleRecentCount: RECENT_BETS_STEP
   }
 
   const elements = {
@@ -37,6 +39,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     pulseList: document.getElementById('pulse-list'),
     activityList: document.getElementById('activity-list'),
     activityCount: document.getElementById('activity-count'),
+    activityMoreWrap: document.getElementById('activity-more-wrap'),
+    activityShowMore: document.getElementById('activity-show-more'),
     liveList: document.getElementById('live-list'),
     liveCount: document.getElementById('live-count'),
     accountDays: document.getElementById('account-days'),
@@ -137,15 +141,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function setActiveFilter(filter) {
     state.filter = filter
+    state.visibleRecentCount = RECENT_BETS_STEP
     elements.filterButtons.forEach((button) => {
       button.classList.toggle('is-active', button.dataset.filter === filter)
     })
     renderActivity()
   }
 
+  function revealMoreActivity() {
+    state.visibleRecentCount += RECENT_BETS_STEP
+    renderActivity()
+  }
+
   function syncHashNavigation() {
     const current = (window.location.hash || '#ledger').replace('#', '') || 'ledger'
-    const activeSection = ['ledger', 'live', 'account'].includes(current) ? current : 'ledger'
+    const activeSection = 'ledger'
 
     elements.navLinks.forEach((link) => {
       const target = link.dataset.navLink
@@ -372,6 +382,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (state.filter === 'all') return true
       return app.getResult(bet) === state.filter
     })
+    const visible = filtered.slice(0, state.visibleRecentCount)
+    const remaining = Math.max(filtered.length - visible.length, 0)
 
     elements.activityCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'entry' : 'entries'}`
 
@@ -383,10 +395,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           <p class="empty-copy">Switch filters or log a new position to populate the ledger.</p>
         </div>
       `
+      elements.activityMoreWrap.hidden = true
       return
     }
 
-    elements.activityList.innerHTML = filtered.map((bet, index) => {
+    elements.activityList.innerHTML = visible.map((bet, index) => {
       const result = app.getResult(bet)
       const net = Number(bet.net_profit || 0)
       const label = app.escapeHtml(fallbackLabel(bet, index))
@@ -421,6 +434,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         </article>
       `
     }).join('')
+
+    if (remaining > 0) {
+      elements.activityShowMore.textContent = `Show ${Math.min(RECENT_BETS_STEP, remaining)} more bets`
+      elements.activityMoreWrap.hidden = false
+      return
+    }
+
+    elements.activityMoreWrap.hidden = true
   }
 
   function renderLive() {
@@ -632,6 +653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!button) return
     openEditDrawer(button.dataset.editBet)
   })
+  elements.activityShowMore.addEventListener('click', revealMoreActivity)
   elements.formLagaya.addEventListener('input', updateProjectedNet)
   elements.formBanaya.addEventListener('input', updateProjectedNet)
   elements.form.addEventListener('submit', handleSubmit)

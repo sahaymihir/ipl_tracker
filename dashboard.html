@@ -36,7 +36,6 @@
       </nav>
 
       <div class="header-actions">
-        <button class="ghost-button" data-open-drawer type="button">New Entry</button>
         <button class="ghost-button" data-signout type="button">Sign out</button>
       </div>
     </header>
@@ -120,7 +119,12 @@
         </div>
 
         <div class="ledger-layout">
-          <div class="feed-stack" id="activity-list"></div>
+          <div class="feed-stack">
+            <div class="feed-stack" id="activity-list"></div>
+            <div class="activity-more" id="activity-more-wrap" hidden>
+              <button class="ghost-button activity-more-button" id="activity-show-more" type="button">Show 5 more bets</button>
+            </div>
+          </div>
           <div class="summary-stack">
             <article class="summary-card accent">
               <div class="kicker">Pulse</div>
@@ -242,20 +246,12 @@
 
   <nav class="bottom-nav" aria-label="Bottom navigation">
     <a class="bottom-nav-link is-active" data-nav-link="ledger" href="#ledger">
-      <span class="material-symbols-outlined">view_timeline</span>
-      <span>Ledger</span>
-    </a>
-    <a class="bottom-nav-link" data-nav-link="live" href="#live">
-      <span class="material-symbols-outlined">bolt</span>
-      <span>Live</span>
+      <span class="material-symbols-outlined">home</span>
+      <span>Home</span>
     </a>
     <a class="bottom-nav-link" href="/analytics">
       <span class="material-symbols-outlined">query_stats</span>
       <span>Analytics</span>
-    </a>
-    <a class="bottom-nav-link" data-nav-link="account" href="#account">
-      <span class="material-symbols-outlined">person</span>
-      <span>Account</span>
     </a>
   </nav>
 
