@@ -48,23 +48,32 @@ create policy "Users see own bets" on bets for all using (auth.uid() = user_id);
 ```env
 SUPABASE_URL=your-project-url
 SUPABASE_ANON_KEY=your-public-anon-key
+APP_URL=https://your-production-domain.vercel.app
 ```
 
 Use the Supabase **anon** key only. Do not put your service role key in browser config.
+Set `APP_URL` to the real deployed frontend URL you want email verification links to open.
 
-### 5. Run Locally
+### 5. Configure Supabase Auth Redirects
+In Supabase, go to **Authentication** → **URL Configuration** and set:
+- **Site URL** to your production app URL, for example `https://your-production-domain.vercel.app`
+- **Redirect URLs** to include both your production URL and any preview/local URLs you intentionally use
+
+If the deployed URL is not allowlisted there, Supabase can fall back to an older localhost site URL during email verification.
+
+### 6. Run Locally
 1. Install the Vercel CLI if needed: `npm i -g vercel`
 2. Start the app with `vercel dev`
 
 This project reads `process.env` from the Vercel runtime through `/api/config`, so opening the HTML files directly will not load env vars.
 
-### 6. Deploy to Vercel
+### 7. Deploy to Vercel
 1. Push this repo to GitHub
 2. Go to [vercel.com](https://vercel.com) and import the repository
-3. Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Project Settings → Environment Variables
+3. Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `APP_URL` in Project Settings → Environment Variables
 4. Deploy
 
-### 7. Use It
+### 8. Use It
 1. Visit your Vercel URL → redirects to login
 2. Enter your Supabase credentials → authenticate
 3. Dashboard auto-seeds your historical IPL data on first load

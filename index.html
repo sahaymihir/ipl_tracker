@@ -479,6 +479,16 @@ function setPending(pending, label) {
   submitBtnLabel.textContent = pending ? label : (currentMode === 'signin' ? 'Sign in' : 'Create account')
 }
 
+function getEmailRedirectUrl() {
+  const baseUrl = runtime.config?.appUrl || window.location.origin
+
+  try {
+    return new URL('/dashboard', baseUrl).toString()
+  } catch (error) {
+    return `${window.location.origin}/dashboard`
+  }
+}
+
 function setMode(mode) {
   currentMode = mode
   const isSignup = mode === 'signup'
@@ -559,7 +569,7 @@ if (!sb) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
+          emailRedirectTo: getEmailRedirectUrl()
         }
       })
 
