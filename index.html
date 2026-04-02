@@ -1,609 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>IPL Ledger | Private Access</title>
-<meta name="description" content="IPL Ledger - A refined private dashboard for IPL positions, results, and bankroll tracking."/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/api/config"></script>
-<style>
-  :root {
-    --bg: #08111d;
-    --bg-deep: #0e1827;
-    --panel: rgba(16, 24, 39, 0.72);
-    --panel-soft: rgba(255, 255, 255, 0.04);
-    --line: rgba(202, 213, 226, 0.14);
-    --line-strong: rgba(202, 213, 226, 0.22);
-    --text: #eef2f8;
-    --muted: #9aa8ba;
-    --accent: #9bb4ff;
-    --accent-soft: rgba(155, 180, 255, 0.16);
-    --teal: #6fc5b8;
-    --rose: #d79aa2;
-    --gold: #d2b07d;
-    --shadow: 0 28px 80px rgba(1, 8, 20, 0.38);
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: "Manrope", sans-serif;
-    color: var(--text);
-    background:
-      radial-gradient(circle at 12% 20%, rgba(155, 180, 255, 0.16), transparent 30%),
-      radial-gradient(circle at 86% 14%, rgba(111, 197, 184, 0.13), transparent 24%),
-      radial-gradient(circle at 62% 82%, rgba(210, 176, 125, 0.12), transparent 26%),
-      linear-gradient(135deg, var(--bg), var(--bg-deep));
-    overflow-x: hidden;
-  }
-
-  ::selection {
-    background: rgba(155, 180, 255, 0.28);
-    color: #ffffff;
-  }
-
-  .font-display { font-family: "Instrument Serif", serif; }
-  .font-mono-display { font-family: "IBM Plex Mono", monospace; }
-
-  .material-symbols-outlined {
-    font-variation-settings: "FILL" 0, "wght" 420, "GRAD" 0, "opsz" 24;
-  }
-
-  .glass-panel {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
-      var(--panel);
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(22px);
-    border-radius: 32px;
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.04);
-    padding: 0.6rem 0.95rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .feature-card,
-  .signal-card {
-    border-radius: 24px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.035);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  .feature-card {
-    padding: 1rem;
-  }
-
-  .signal-card {
-    padding: 1.15rem;
-  }
-
-  .auth-toggle {
-    border-radius: 999px;
-    border: 1px solid transparent;
-    background: transparent;
-    padding: 0.9rem 1rem;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    transition: all 180ms ease;
-  }
-
-  .auth-toggle.is-active {
-    border-color: var(--line-strong);
-    background: rgba(255, 255, 255, 0.09);
-    color: var(--text);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  }
-
-  .field-shell {
-    border-radius: 22px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.035);
-    padding: 0.95rem 1rem;
-    transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
-  }
-
-  .field-shell:focus-within {
-    border-color: rgba(155, 180, 255, 0.42);
-    background: rgba(255, 255, 255, 0.055);
-    transform: translateY(-1px);
-  }
-
-  .field-label {
-    display: block;
-    margin-bottom: 0.35rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .field-shell input {
-    width: 100%;
-    border: 0;
-    background: transparent;
-    color: var(--text);
-    font-size: 1rem;
-    font-weight: 600;
-    padding: 0;
-    outline: none;
-    box-shadow: none;
-  }
-
-  .field-shell input::placeholder {
-    color: rgba(154, 168, 186, 0.55);
-  }
-
-  .status-card {
-    border-radius: 22px;
-    border: 1px solid var(--line);
-    padding: 0.95rem 1rem;
-    font-size: 0.9rem;
-    line-height: 1.6;
-  }
-
-  .status-card[data-tone="error"] {
-    border-color: rgba(215, 154, 162, 0.35);
-    background: rgba(215, 154, 162, 0.11);
-    color: #f5dce0;
-  }
-
-  .status-card[data-tone="success"] {
-    border-color: rgba(111, 197, 184, 0.35);
-    background: rgba(111, 197, 184, 0.11);
-    color: #d5f1eb;
-  }
-
-  .primary-button {
-    width: 100%;
-    border: 0;
-    border-radius: 999px;
-    padding: 1rem 1.35rem;
-    background: linear-gradient(135deg, rgba(155, 180, 255, 0.95), rgba(210, 176, 125, 0.92));
-    color: #091220;
-    font-size: 0.86rem;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    box-shadow: 0 16px 32px rgba(155, 180, 255, 0.2);
-    transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
-  }
-
-  .primary-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 22px 38px rgba(155, 180, 255, 0.24);
-  }
-
-  .primary-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-  }
-
-  .eyebrow {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .insight-panel {
-    position: relative;
-    overflow: hidden;
-    border-radius: 28px;
-    border: 1px solid var(--line);
-    background:
-      radial-gradient(circle at top right, rgba(155, 180, 255, 0.16), transparent 34%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-    padding: 1.4rem;
-  }
-
-  .insight-panel::after {
-    content: "";
-    position: absolute;
-    inset: auto -8% -42% 44%;
-    height: 180px;
-    border-radius: 999px;
-    background: rgba(111, 197, 184, 0.14);
-    filter: blur(44px);
-  }
-
-  .sparkline {
-    height: 76px;
-    border-radius: 18px;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
-      radial-gradient(circle at 12% 30%, rgba(155, 180, 255, 0.18), transparent 30%);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .sparkline svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .orb {
-    position: absolute;
-    border-radius: 999px;
-    filter: blur(40px);
-    opacity: 0.45;
-  }
-
-  .orb-a {
-    width: 220px;
-    height: 220px;
-    top: 4%;
-    left: -3%;
-    background: rgba(155, 180, 255, 0.18);
-  }
-
-  .orb-b {
-    width: 260px;
-    height: 260px;
-    right: -6%;
-    top: 24%;
-    background: rgba(111, 197, 184, 0.13);
-  }
-
-  .orb-c {
-    width: 300px;
-    height: 300px;
-    left: 36%;
-    bottom: -12%;
-    background: rgba(210, 176, 125, 0.11);
-  }
-
-  .reveal {
-    animation: rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  .stagger {
-    animation-delay: 110ms;
-  }
-
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(28px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SattaSheet | Access Terminal</title>
+  <meta name="description" content="SattaSheet access terminal for live Supabase authentication, verification-safe onboarding, and premium betting analytics.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/sattasheet.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/api/config"></script>
+  <script defer src="/assets/app.js"></script>
+  <script defer src="/assets/auth.js"></script>
 </head>
 <body>
-<div class="pointer-events-none fixed inset-0 overflow-hidden">
-  <div class="orb orb-a"></div>
-  <div class="orb orb-b"></div>
-  <div class="orb orb-c"></div>
-</div>
+  <main class="auth-shell">
+    <section class="auth-stage">
+      <aside class="auth-preview">
+        <div class="auth-preview-inner">
+          <div class="preview-shell">
+            <div class="brand">
+              <span class="brand-mark">
+                <span class="material-symbols-outlined">bolt</span>
+              </span>
+              <div class="brand-copy">
+                <div class="brand-title">SattaSheet</div>
+                <div class="brand-subtitle">Live ledger, analytics, and account control</div>
+              </div>
+            </div>
 
-<main class="relative min-h-screen px-5 py-8 md:px-8 md:py-10">
-  <div class="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-    <section class="glass-panel reveal p-7 md:p-10">
-      <div class="chip">
-        <span class="material-symbols-outlined text-[18px]">shield_locked</span>
-        Private IPL capital journal
-      </div>
+            <div class="preview-copy">
+              <div class="kicker" id="preview-eyebrow">Velocity Betting Engine</div>
+              <div class="brand-wordmark">SattaSheet</div>
+              <h1 class="preview-title" id="preview-title">Re-enter the SattaSheet command layer.</h1>
+              <p id="preview-copy">Live ledger, active exposure, and performance analytics stay one tap away once your Supabase session clears.</p>
+            </div>
 
-      <h1 class="font-display mt-6 max-w-3xl text-5xl leading-[0.92] md:text-7xl">
-        Track every stake with a calmer, sharper lens.
-      </h1>
-      <p class="mt-5 max-w-2xl text-sm leading-7 text-[var(--muted)] md:text-base">
-        A more measured control room for your IPL book. Cleaner typography, quieter color, and a focused place to review wins, losses, and live exposure without noise.
-      </p>
+            <div class="preview-grid">
+              <article class="auth-kpi">
+                <div class="meta-label" id="preview-primary-label">Live Profit</div>
+                <div class="auth-kpi-value value-positive" id="preview-primary-value">+₹84.6K</div>
+              </article>
+              <article class="auth-kpi">
+                <div class="meta-label" id="preview-secondary-label">Verification</div>
+                <div class="auth-kpi-value" id="preview-secondary-value">Synced</div>
+              </article>
+            </div>
 
-      <div class="mt-8 grid gap-3 sm:grid-cols-3">
-        <article class="feature-card">
-          <p class="eyebrow">Secure access</p>
-          <h2 class="mt-3 text-lg font-semibold">One account, one ledger, no clutter.</h2>
-        </article>
-        <article class="feature-card">
-          <p class="eyebrow">Live clarity</p>
-          <h2 class="mt-3 text-lg font-semibold">Open bets stay visible without overwhelming the rest.</h2>
-        </article>
-        <article class="feature-card">
-          <p class="eyebrow">Quiet analytics</p>
-          <h2 class="mt-3 text-lg font-semibold">Performance views that feel premium instead of loud.</h2>
-        </article>
-      </div>
-
-      <div class="insight-panel mt-8">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p class="eyebrow">Ledger atmosphere</p>
-            <h2 class="font-display mt-2 text-3xl">Muted, deliberate, and personal.</h2>
+            <article class="preview-chart">
+              <div class="section-label">Momentum Snapshot</div>
+              <div class="preview-bars" aria-hidden="true">
+                <span style="height: 46%;"></span>
+                <span style="height: 72%;"></span>
+                <span style="height: 58%;"></span>
+                <span style="height: 86%;"></span>
+                <span style="height: 64%;"></span>
+              </div>
+              <svg viewBox="0 0 300 140" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M8 112 C44 72 76 102 122 58 S208 34 292 24" fill="none" stroke="rgba(153,247,255,0.75)" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"></path>
+              </svg>
+            </article>
           </div>
-          <span class="chip border-[var(--line-strong)] bg-[var(--accent-soft)] text-[var(--text)]">Season view</span>
+
+          <div class="preview-list">
+            <div class="preview-ticker">
+              <div class="preview-list-item">
+                <span class="meta-label">Flow</span>
+                <strong id="preview-ticker-a">Realtime ledger online</strong>
+              </div>
+            </div>
+            <div class="preview-ticker">
+              <div class="preview-list-item">
+                <span class="meta-label">Route</span>
+                <strong id="preview-ticker-b">Analytics route armed</strong>
+              </div>
+            </div>
+            <div class="preview-ticker">
+              <div class="preview-list-item">
+                <span class="meta-label">Identity</span>
+                <strong id="preview-ticker-c">Operator identity secure</strong>
+              </div>
+            </div>
+          </div>
         </div>
+      </aside>
 
-        <div class="mt-6 grid gap-3 sm:grid-cols-3">
-          <div class="signal-card">
-            <p class="eyebrow">Capital flow</p>
-            <p class="font-mono-display mt-3 text-2xl">₹ 18.6K</p>
-            <p class="mt-2 text-sm text-[var(--muted)]">High-signal numbers with room to breathe.</p>
+      <section class="auth-panel">
+        <div class="auth-panel-inner">
+          <div class="split-row">
+            <div>
+              <div class="kicker">Private Access</div>
+              <h2 class="auth-title" id="auth-form-title">Sign in</h2>
+              <p class="panel-copy" id="auth-form-copy">Use your Supabase identity to unlock the live dashboard, analytics, and account controls.</p>
+            </div>
+            <div class="mode-switch" aria-label="Authentication mode">
+              <button class="mode-button is-active" id="mode-login" type="button">Sign in</button>
+              <button class="mode-button" id="mode-signup" type="button">Create account</button>
+            </div>
           </div>
-          <div class="signal-card">
-            <p class="eyebrow">Win rhythm</p>
-            <p class="font-mono-display mt-3 text-2xl">63.4%</p>
-            <p class="mt-2 text-sm text-[var(--muted)]">A cleaner read on momentum across the slate.</p>
+
+          <div class="status-banner" id="auth-status" data-tone="info" hidden></div>
+
+          <form class="form-stack" id="auth-form" novalidate>
+            <div class="field-group hidden" id="full-name-group">
+              <label class="field-label" for="full-name">Full Name</label>
+              <div class="field-shell">
+                <span class="material-symbols-outlined">person</span>
+                <input id="full-name" name="full_name" type="text" placeholder="Alex Rider" autocomplete="name">
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="email">Email</label>
+              <div class="field-shell">
+                <span class="material-symbols-outlined">alternate_email</span>
+                <input id="email" name="email" type="email" placeholder="operator@sattasheet.app" autocomplete="email" required>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="password">Password</label>
+              <div class="field-shell">
+                <span class="material-symbols-outlined">lock</span>
+                <input id="password" name="password" type="password" placeholder="Enter password" autocomplete="current-password" required>
+                <button class="toggle-visibility" type="button" data-toggle-password data-target="password" aria-label="Toggle password visibility">
+                  <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="field-group hidden" id="confirm-password-group">
+              <label class="field-label" for="confirm-password">Confirm Password</label>
+              <div class="field-shell">
+                <span class="material-symbols-outlined">verified_user</span>
+                <input id="confirm-password" name="confirm_password" type="password" placeholder="Repeat password" autocomplete="new-password">
+                <button class="toggle-visibility" type="button" data-toggle-password data-target="confirm-password" aria-label="Toggle confirm password visibility">
+                  <span class="material-symbols-outlined">visibility_off</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="checkbox-row hidden" id="terms-group">
+              <input id="terms" name="terms" type="checkbox">
+              <label for="terms">
+                I accept the <span class="inline-link">terms of service</span> and <span class="inline-link">privacy protocol</span> for this betting ledger.
+              </label>
+            </div>
+
+            <button class="primary-button" id="auth-submit" type="submit" data-default-label="Initialize access">
+              <span id="auth-submit-label">Initialize access</span>
+            </button>
+          </form>
+
+          <div class="auth-footer-row">
+            <span class="muted" id="auth-switch-label">New to the terminal?</span>
+            <button class="text-button" id="auth-switch-button" data-mode="signup" type="button">Create account</button>
+            <button class="ghost-button hidden" id="resend-verification" type="button">Resend verification email</button>
           </div>
-          <div class="signal-card">
-            <p class="eyebrow">Live exposure</p>
-            <p class="font-mono-display mt-3 text-2xl">03</p>
-            <p class="mt-2 text-sm text-[var(--muted)]">Open positions stay present, not distracting.</p>
+
+          <div class="auth-footer">
+            <div class="auth-trust">
+              <div class="auth-trust-item">
+                <span class="material-symbols-outlined">shield</span>
+                <span>Supabase Auth</span>
+              </div>
+              <div class="auth-trust-item">
+                <span class="material-symbols-outlined">link</span>
+                <span>Vercel Runtime Config</span>
+              </div>
+            </div>
+            <div class="auth-trust-item">
+              <span class="material-symbols-outlined">monitoring</span>
+              <span>Live Frontend Flow</span>
+            </div>
           </div>
         </div>
-
-        <div class="sparkline mt-6">
-          <svg preserveAspectRatio="none" viewBox="0 0 300 80">
-            <defs>
-              <linearGradient id="curveGlow" x1="0%" x2="100%" y1="0%" y2="0%">
-                <stop offset="0%" stop-color="rgba(155,180,255,0.2)"></stop>
-                <stop offset="100%" stop-color="rgba(111,197,184,0.85)"></stop>
-              </linearGradient>
-            </defs>
-            <path d="M0 60 C 36 48, 56 14, 88 20 S 148 64, 174 48 228 16, 300 24" fill="none" stroke="url(#curveGlow)" stroke-linecap="round" stroke-width="3"></path>
-          </svg>
-        </div>
-      </div>
+      </section>
     </section>
-
-    <section class="glass-panel reveal stagger p-6 md:p-8">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <p class="eyebrow">Secure entry</p>
-          <h2 class="font-display mt-2 text-4xl" id="auth-title">Welcome back</h2>
-          <p class="mt-3 max-w-md text-sm leading-7 text-[var(--muted)]" id="auth-subtitle">
-            Sign in to reach your private ledger and performance dashboard.
-          </p>
-        </div>
-        <span class="chip">Supabase</span>
-      </div>
-
-      <div class="mt-6 grid grid-cols-2 gap-2 rounded-full border border-[var(--line)] bg-white/[0.04] p-1">
-        <button class="auth-toggle is-active" data-auth-mode="signin" type="button">Sign in</button>
-        <button class="auth-toggle" data-auth-mode="signup" type="button">Create account</button>
-      </div>
-
-      <form class="mt-6 space-y-4" id="login-form">
-        <label class="field-shell block">
-          <span class="field-label">Email</span>
-          <input autocomplete="email" id="email-input" placeholder="your@email.com" required type="email"/>
-        </label>
-
-        <label class="field-shell block">
-          <span class="field-label">Password</span>
-          <input autocomplete="current-password" id="password-input" placeholder="Enter your password" required type="password"/>
-        </label>
-
-        <label class="field-shell hidden" id="confirm-field">
-          <span class="field-label">Confirm password</span>
-          <input autocomplete="new-password" id="confirm-password-input" placeholder="Repeat your password" type="password"/>
-        </label>
-
-        <div class="status-card hidden" data-tone="error" id="status-message"></div>
-
-        <button class="primary-button" id="submit-btn" type="submit">
-          <span id="submit-btn-label">Sign in</span>
-        </button>
-
-        <p class="text-center text-sm leading-7 text-[var(--muted)]" id="auth-footnote">
-          Existing account? Sign in directly. New here? Switch to create account and Supabase will register your login.
-        </p>
-      </form>
-
-      <div class="mt-6 grid gap-3 sm:grid-cols-2">
-        <article class="signal-card">
-          <p class="eyebrow">Session rules</p>
-          <p class="mt-3 text-sm leading-7 text-[var(--muted)]">Auth is tied to Supabase, so passwords and account creation stay in one place.</p>
-        </article>
-        <article class="signal-card">
-          <p class="eyebrow">Verification note</p>
-          <p class="mt-3 text-sm leading-7 text-[var(--muted)]">If email confirmations are enabled in Supabase, new users may need to verify before signing in.</p>
-        </article>
-      </div>
-    </section>
-  </div>
-</main>
-
-<script>
-const form = document.getElementById('login-form')
-const emailInput = document.getElementById('email-input')
-const passwordInput = document.getElementById('password-input')
-const confirmField = document.getElementById('confirm-field')
-const confirmPasswordInput = document.getElementById('confirm-password-input')
-const statusMessage = document.getElementById('status-message')
-const submitBtn = document.getElementById('submit-btn')
-const submitBtnLabel = document.getElementById('submit-btn-label')
-const authTitle = document.getElementById('auth-title')
-const authSubtitle = document.getElementById('auth-subtitle')
-const authFootnote = document.getElementById('auth-footnote')
-const modeButtons = Array.from(document.querySelectorAll('[data-auth-mode]'))
-
-let currentMode = 'signin'
-
-function getRuntimeConfig() {
-  const config = window.__APP_CONFIG__ || {}
-
-  if (!config.supabaseUrl || !config.supabaseAnonKey) {
-    return {
-      error: 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy or restart `vercel dev`.'
-    }
-  }
-
-  return { config }
-}
-
-function setStatus(message, tone) {
-  if (!message) {
-    statusMessage.textContent = ''
-    statusMessage.classList.add('hidden')
-    return
-  }
-
-  statusMessage.dataset.tone = tone || 'error'
-  statusMessage.textContent = message
-  statusMessage.classList.remove('hidden')
-}
-
-function setPending(pending, label) {
-  submitBtn.disabled = pending
-  submitBtnLabel.textContent = pending ? label : (currentMode === 'signin' ? 'Sign in' : 'Create account')
-}
-
-function getEmailRedirectUrl() {
-  const baseUrl = runtime.config?.appUrl || window.location.origin
-
-  try {
-    return new URL('/dashboard', baseUrl).toString()
-  } catch (error) {
-    return `${window.location.origin}/dashboard`
-  }
-}
-
-function setMode(mode) {
-  currentMode = mode
-  const isSignup = mode === 'signup'
-
-  modeButtons.forEach((button) => {
-    button.classList.toggle('is-active', button.dataset.authMode === mode)
-  })
-
-  confirmField.classList.toggle('hidden', !isSignup)
-  confirmPasswordInput.required = isSignup
-  confirmPasswordInput.value = ''
-  passwordInput.autocomplete = isSignup ? 'new-password' : 'current-password'
-
-  authTitle.textContent = isSignup ? 'Create your account' : 'Welcome back'
-  authSubtitle.textContent = isSignup
-    ? 'Start your private ledger here. Once the account exists, the same credentials take you straight into the dashboard.'
-    : 'Sign in to reach your private ledger and performance dashboard.'
-  authFootnote.textContent = isSignup
-    ? 'If Supabase email confirmation is enabled, we will create the account and ask you to verify your email before signing in.'
-    : 'Existing account? Sign in directly. New here? Switch to create account and Supabase will register your login.'
-  submitBtnLabel.textContent = isSignup ? 'Create account' : 'Sign in'
-  setStatus('', 'error')
-}
-
-function disableAuthSurface(message) {
-  ;[emailInput, passwordInput, confirmPasswordInput, submitBtn, ...modeButtons].forEach((node) => {
-    node.disabled = true
-  })
-  setStatus(message, 'error')
-  submitBtnLabel.textContent = 'Config required'
-}
-
-async function redirectIfSessionExists(sb) {
-  const { data: { session } } = await sb.auth.getSession()
-  if (session) window.location.href = 'dashboard.html'
-}
-
-const runtime = getRuntimeConfig()
-const sb = runtime.config
-  ? window.supabase.createClient(runtime.config.supabaseUrl, runtime.config.supabaseAnonKey)
-  : null
-
-modeButtons.forEach((button) => {
-  button.addEventListener('click', () => setMode(button.dataset.authMode))
-})
-
-setMode(currentMode)
-
-if (!sb) {
-  disableAuthSurface(runtime.error)
-} else {
-  redirectIfSessionExists(sb)
-
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault()
-    setStatus('', 'error')
-
-    const email = emailInput.value.trim()
-    const password = passwordInput.value
-    const isSignup = currentMode === 'signup'
-
-    if (isSignup) {
-      if (password.length < 6) {
-        setStatus('Use at least 6 characters for the new password.', 'error')
-        return
-      }
-
-      if (password !== confirmPasswordInput.value) {
-        setStatus('Passwords do not match yet. Please re-enter them.', 'error')
-        return
-      }
-    }
-
-    setPending(true, isSignup ? 'Creating account...' : 'Signing in...')
-
-    if (isSignup) {
-      const { data, error } = await sb.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: getEmailRedirectUrl()
-        }
-      })
-
-      if (error) {
-        setStatus(error.message, 'error')
-        setPending(false)
-        return
-      }
-
-      if (data.session) {
-        window.location.href = 'dashboard.html'
-        return
-      }
-
-      setMode('signin')
-      setStatus('Account created. If email confirmation is enabled in Supabase, verify your inbox and then sign in.', 'success')
-      setPending(false)
-      return
-    }
-
-    const { error } = await sb.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    if (error) {
-      setStatus(error.message, 'error')
-      setPending(false)
-      return
-    }
-
-    window.location.href = 'dashboard.html'
-  })
-}
-</script>
+  </main>
 </body>
 </html>

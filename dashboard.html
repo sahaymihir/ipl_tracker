@@ -1,1604 +1,327 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>IPL Ledger | Private Dashboard</title>
-<meta name="description" content="IPL Ledger - A modern private dashboard to track IPL entries, returns, live exposure, and season performance."/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/api/config"></script>
-<style>
-  :root {
-    --bg: #08111d;
-    --bg-2: #0d1726;
-    --panel: rgba(16, 24, 39, 0.72);
-    --panel-strong: rgba(17, 26, 42, 0.9);
-    --panel-soft: rgba(255, 255, 255, 0.04);
-    --line: rgba(199, 210, 222, 0.12);
-    --line-strong: rgba(199, 210, 222, 0.2);
-    --text: #edf2fb;
-    --muted: #9aa8ba;
-    --soft: #c3cfde;
-    --accent: #95b3ff;
-    --accent-soft: rgba(149, 179, 255, 0.15);
-    --teal: #70c9bc;
-    --rose: #d89ba3;
-    --amber: #d7b274;
-    --gold: #d1b180;
-    --shadow: 0 28px 80px rgba(1, 8, 20, 0.38);
-  }
-
-  html.light {
-    --bg: #eef3f8;
-    --bg-2: #e4ebf2;
-    --panel: rgba(255, 255, 255, 0.78);
-    --panel-strong: rgba(255, 255, 255, 0.92);
-    --panel-soft: rgba(20, 32, 51, 0.04);
-    --line: rgba(31, 44, 62, 0.1);
-    --line-strong: rgba(31, 44, 62, 0.16);
-    --text: #142033;
-    --muted: #5b6980;
-    --soft: #324056;
-    --accent: #5f7cda;
-    --accent-soft: rgba(95, 124, 218, 0.14);
-    --teal: #2d9386;
-    --rose: #b45d6b;
-    --amber: #b68633;
-    --gold: #9c7844;
-    --shadow: 0 20px 60px rgba(34, 50, 71, 0.12);
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    min-height: 100vh;
-    font-family: "Manrope", sans-serif;
-    color: var(--text);
-    background:
-      radial-gradient(circle at 10% 15%, rgba(149, 179, 255, 0.14), transparent 26%),
-      radial-gradient(circle at 88% 20%, rgba(112, 201, 188, 0.12), transparent 24%),
-      radial-gradient(circle at 60% 84%, rgba(215, 178, 116, 0.12), transparent 24%),
-      linear-gradient(135deg, var(--bg), var(--bg-2));
-    overflow-x: hidden;
-  }
-
-  ::selection {
-    background: rgba(149, 179, 255, 0.26);
-    color: #ffffff;
-  }
-
-  .font-display { font-family: "Instrument Serif", serif; }
-  .font-mono-display { font-family: "IBM Plex Mono", monospace; }
-
-  .material-symbols-outlined {
-    font-variation-settings: "FILL" 0, "wght" 420, "GRAD" 0, "opsz" 24;
-  }
-
-  .top-shell,
-  .panel-card,
-  .hero-card,
-  .metric-card,
-  .feed-card,
-  .drawer-panel,
-  .signal-card,
-  .nav-shell {
-    backdrop-filter: blur(22px);
-    box-shadow: var(--shadow);
-  }
-
-  .top-shell,
-  .panel-card,
-  .hero-card,
-  .drawer-panel,
-  .nav-shell {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
-      var(--panel);
-    border: 1px solid var(--line);
-  }
-
-  .top-shell {
-    border-radius: 28px;
-  }
-
-  .hero-card {
-    position: relative;
-    overflow: hidden;
-    border-radius: 34px;
-  }
-
-  .hero-card::after {
-    content: "";
-    position: absolute;
-    inset: auto -8% -32% 52%;
-    height: 220px;
-    border-radius: 999px;
-    background: rgba(112, 201, 188, 0.14);
-    filter: blur(52px);
-    pointer-events: none;
-  }
-
-  .panel-card {
-    border-radius: 30px;
-  }
-
-  .signal-card,
-  .metric-card,
-  .data-chip {
-    border-radius: 24px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  }
-
-  .signal-card,
-  .metric-card {
-    padding: 1.1rem;
-  }
-
-  .metric-card {
-    min-height: 152px;
-  }
-
-  .metric-card.metric-profit {
-    border-color: rgba(112, 201, 188, 0.28);
-    background:
-      linear-gradient(160deg, rgba(112, 201, 188, 0.12), transparent 48%),
-      rgba(255, 255, 255, 0.04);
-  }
-
-  .metric-card.metric-loss {
-    border-color: rgba(216, 155, 163, 0.28);
-    background:
-      linear-gradient(160deg, rgba(216, 155, 163, 0.12), transparent 48%),
-      rgba(255, 255, 255, 0.04);
-  }
-
-  .nav-shell {
-    border-radius: 24px;
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.04);
-    padding: 0.55rem 0.9rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .eyebrow {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .icon-button {
-    width: 2.75rem;
-    height: 2.75rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-  }
-
-  .icon-button:hover {
-    transform: translateY(-1px);
-    border-color: var(--line-strong);
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .action-button {
-    border-radius: 999px;
-    border: 0;
-    background: linear-gradient(135deg, rgba(149, 179, 255, 0.95), rgba(209, 177, 128, 0.92));
-    color: #0b1321;
-    padding: 0.95rem 1.35rem;
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    box-shadow: 0 18px 34px rgba(149, 179, 255, 0.2);
-    transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
-  }
-
-  .action-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 24px 42px rgba(149, 179, 255, 0.24);
-  }
-
-  .action-button:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-  }
-
-  .ghost-button {
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text);
-    padding: 0.9rem 1.2rem;
-    font-size: 0.76rem;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-  }
-
-  .ghost-button:hover {
-    transform: translateY(-1px);
-    border-color: var(--line-strong);
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  .filter-tab,
-  .nav-item {
-    transition: all 180ms ease;
-  }
-
-  .filter-tab {
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.03);
-    padding: 0.72rem 1rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .filter-tab.is-active {
-    border-color: rgba(149, 179, 255, 0.28);
-    background: var(--accent-soft);
-    color: var(--text);
-  }
-
-  .nav-item {
-    flex: 1;
-    border-radius: 18px;
-    border: 1px solid transparent;
-    background: transparent;
-    padding: 0.7rem 0.55rem;
-    color: var(--muted);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.32rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-
-  .nav-item.is-active {
-    border-color: var(--line-strong);
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
-
-  .feed-card {
-    border-radius: 28px;
-    border: 1px solid var(--line);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-      var(--panel-soft);
-    padding: 1.15rem;
-  }
-
-  .feed-card.win { border-color: rgba(112, 201, 188, 0.25); }
-  .feed-card.loss { border-color: rgba(216, 155, 163, 0.25); }
-  .feed-card.pending { border-color: rgba(215, 178, 116, 0.25); }
-
-  .result-pill {
-    border-radius: 999px;
-    padding: 0.45rem 0.7rem;
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    border: 1px solid transparent;
-  }
-
-  .result-pill.win {
-    background: rgba(112, 201, 188, 0.12);
-    color: var(--teal);
-    border-color: rgba(112, 201, 188, 0.2);
-  }
-
-  .result-pill.loss {
-    background: rgba(216, 155, 163, 0.12);
-    color: var(--rose);
-    border-color: rgba(216, 155, 163, 0.2);
-  }
-
-  .result-pill.pending {
-    background: rgba(215, 178, 116, 0.12);
-    color: var(--amber);
-    border-color: rgba(215, 178, 116, 0.2);
-  }
-
-  .data-chip {
-    padding: 0.85rem;
-  }
-
-  .empty-state {
-    border-radius: 28px;
-    border: 1px dashed var(--line-strong);
-    background: rgba(255, 255, 255, 0.03);
-    padding: 2rem;
-    text-align: center;
-  }
-
-  .form-field {
-    border-radius: 22px;
-    border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.04);
-    padding: 0.95rem 1rem;
-    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
-  }
-
-  .form-field:focus-within {
-    border-color: rgba(149, 179, 255, 0.4);
-    background: rgba(255, 255, 255, 0.06);
-    transform: translateY(-1px);
-  }
-
-  .form-field label {
-    display: block;
-    margin-bottom: 0.35rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .form-field input {
-    width: 100%;
-    border: 0;
-    background: transparent;
-    padding: 0;
-    color: var(--text);
-    font-size: 0.98rem;
-    font-weight: 600;
-    outline: none;
-    box-shadow: none;
-  }
-
-  .form-field input::placeholder {
-    color: rgba(154, 168, 186, 0.55);
-  }
-
-  .drawer-overlay { transition: opacity 240ms ease; }
-  .drawer-panel { transition: transform 260ms ease; }
-  .drawer-hidden .drawer-overlay { opacity: 0; pointer-events: none; }
-  .drawer-hidden .drawer-panel { transform: translateY(104%); }
-
-  .drawer-panel {
-    width: 100%;
-    max-height: min(88vh, 760px);
-    overflow-y: auto;
-    border-radius: 32px 32px 0 0;
-  }
-
-  .toast-hide {
-    opacity: 0;
-    transform: translateY(18px);
-    pointer-events: none;
-  }
-
-  .toast-show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .toast-card {
-    border-radius: 22px;
-    border: 1px solid rgba(112, 201, 188, 0.24);
-    background: rgba(17, 26, 42, 0.86);
-    color: var(--text);
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(22px);
-    transition: all 240ms ease;
-  }
-
-  html.light .toast-card {
-    background: rgba(255, 255, 255, 0.88);
-  }
-
-  .status-message {
-    border-radius: 22px;
-    border: 1px solid rgba(216, 155, 163, 0.28);
-    background: rgba(216, 155, 163, 0.1);
-    color: var(--text);
-    padding: 0.9rem 1rem;
-    font-size: 0.88rem;
-    line-height: 1.6;
-  }
-
-  .ambient-orb {
-    position: absolute;
-    border-radius: 999px;
-    filter: blur(44px);
-    opacity: 0.42;
-  }
-
-  .ambient-a {
-    width: 240px;
-    height: 240px;
-    left: -3%;
-    top: 6%;
-    background: rgba(149, 179, 255, 0.18);
-  }
-
-  .ambient-b {
-    width: 260px;
-    height: 260px;
-    right: -7%;
-    top: 28%;
-    background: rgba(112, 201, 188, 0.14);
-  }
-
-  .ambient-c {
-    width: 320px;
-    height: 320px;
-    left: 44%;
-    bottom: -16%;
-    background: rgba(215, 178, 116, 0.12);
-  }
-
-  .reveal {
-    animation: rise 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(26px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @media (min-width: 768px) {
-    .drawer-panel {
-      border-radius: 32px;
-    }
-  }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SattaSheet | Dashboard</title>
+  <meta name="description" content="Operational SattaSheet dashboard for live ledger tracking, open exposure, account summary, and Supabase-backed entry logging.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/sattasheet.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/api/config"></script>
+  <script defer src="/assets/app.js"></script>
+  <script defer src="/assets/dashboard.js"></script>
 </head>
 <body>
-<div class="pointer-events-none fixed inset-0 overflow-hidden">
-  <div class="ambient-orb ambient-a"></div>
-  <div class="ambient-orb ambient-b"></div>
-  <div class="ambient-orb ambient-c"></div>
-</div>
-
-<header class="sticky top-0 z-50 px-4 pt-4">
-  <div class="top-shell mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
-    <div class="flex items-center gap-4">
-      <div class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--line)] bg-white/[0.05]">
-        <span class="material-symbols-outlined">waterfall_chart</span>
-      </div>
-      <div>
-        <p class="eyebrow">Private ledger</p>
-        <h1 class="font-display text-3xl leading-none">IPL Ledger</h1>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <button class="icon-button" id="theme-toggle-btn" type="button">
-        <span class="material-symbols-outlined" id="theme-icon">light_mode</span>
-      </button>
-      <button class="icon-button" id="logout-btn" type="button">
-        <span class="material-symbols-outlined">logout</span>
-      </button>
-    </div>
-  </div>
-</header>
-
-<main class="relative mx-auto max-w-6xl space-y-6 px-4 pb-32 pt-6">
-  <section class="hero-card reveal p-6 md:p-8">
-    <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-      <div>
-        <p class="eyebrow">Season cockpit</p>
-        <h2 class="font-display mt-3 max-w-3xl text-5xl leading-[0.94] md:text-6xl">A quieter read on the bankroll.</h2>
-        <p class="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)] md:text-base">
-          Modern, calmer surfaces with the numbers that matter first: capital deployed, season edge, live exposure, and every recorded entry in one place.
-        </p>
-
-        <div class="mt-6 flex flex-wrap gap-2">
-          <span class="chip" id="hero-user-pill">Private account</span>
-          <span class="chip" id="hero-live-chip">0 live positions</span>
-          <span class="chip" id="hero-sync-chip">Awaiting sync</span>
-        </div>
-
-        <div class="mt-6 flex flex-wrap gap-3">
-          <button class="action-button" id="hero-add-btn" type="button">Log new entry</button>
-          <button class="ghost-button" data-nav-target="stats" type="button">Open analytics</button>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">
+          <span class="material-symbols-outlined">bolt</span>
+        </span>
+        <div class="brand-copy">
+          <div class="brand-title">SattaSheet</div>
+          <div class="brand-subtitle">Operational dashboard</div>
         </div>
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-        <article class="signal-card">
-          <p class="eyebrow">Entries tracked</p>
-          <p class="font-mono-display mt-3 text-3xl" id="hero-total-bets">0</p>
-          <p class="mt-2 text-sm leading-7 text-[var(--muted)]">The full season footprint of this account.</p>
-        </article>
+      <nav class="nav-cluster topbar-links" aria-label="Primary">
+        <a class="is-active" data-nav-link="ledger" href="#ledger">Ledger</a>
+        <a data-nav-link="live" href="#live">Live</a>
+        <a href="/analytics">Analytics</a>
+        <a data-nav-link="account" href="#account">Account</a>
+      </nav>
 
-        <article class="signal-card">
-          <p class="eyebrow">Settled strike</p>
-          <p class="font-mono-display mt-3 text-3xl" id="hero-winrate-pill">0%</p>
-          <p class="mt-2 text-sm leading-7 text-[var(--muted)]">Win rate across resolved positions only.</p>
-        </article>
-
-        <article class="signal-card">
-          <p class="eyebrow">Season edge</p>
-          <p class="font-mono-display mt-3 text-3xl" id="account-season-net">+₹ 0</p>
-          <p class="mt-2 text-sm leading-7 text-[var(--muted)]">Your running profit after returns minus stake.</p>
-        </article>
+      <div class="header-actions">
+        <button class="ghost-button" data-open-drawer type="button">New Entry</button>
+        <button class="ghost-button" data-signout type="button">Sign out</button>
       </div>
-    </div>
-  </section>
+    </header>
 
-  <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" id="zone-stats">
-    <article class="metric-card">
-      <p class="eyebrow">Capital deployed</p>
-      <h3 class="font-mono-display mt-4 text-3xl" id="stat-invested">₹ 0</h3>
-      <p class="mt-3 text-sm leading-7 text-[var(--muted)]">Every rupee committed across settled and live entries.</p>
-    </article>
+    <div class="status-line" id="dashboard-status" data-tone="success" hidden></div>
+    <div class="hidden" id="fatal-state"></div>
 
-    <article class="metric-card">
-      <p class="eyebrow">Capital returned</p>
-      <h3 class="font-mono-display mt-4 text-3xl" id="stat-returned">₹ 0</h3>
-      <p class="mt-3 text-sm leading-7 text-[var(--muted)]">Gross amount that has already come back into the book.</p>
-    </article>
+    <main class="app-grid hidden" id="dashboard-app">
+      <section class="hero-card hero-primary">
+        <div class="hero-layout">
+          <div class="hero-copy">
+            <div class="hero-meta">
+              <span class="chip">Operator <strong id="welcome-name">Operator</strong></span>
+              <span class="chip" id="hero-net-tone">+0.0% ROI</span>
+              <span class="chip" id="last-updated">Synced --:--</span>
+            </div>
+            <div>
+              <div class="kicker">Command Layer</div>
+              <h1 class="hero-title">Live ledger intelligence for every entry you place.</h1>
+              <p class="hero-subtitle" id="hero-copy">Tracking your Supabase-backed entries and translating them into a sharper read on exposure, rhythm, and edge.</p>
+            </div>
+            <div class="hero-actions">
+              <button class="primary-button" data-open-drawer type="button" style="width:auto;">Log a new entry</button>
+              <a class="ghost-button" href="/analytics">Open analytics</a>
+            </div>
+            <div class="chip-row">
+              <span class="chip">Net <strong id="hero-net">+₹0</strong></span>
+              <span class="chip">ROI <strong id="hero-roi">0%</strong></span>
+              <span class="chip">Exposure <strong id="hero-exposure">₹0</strong></span>
+              <span class="chip">Tracked <strong id="hero-tracked">0 days</strong></span>
+            </div>
+          </div>
 
-    <article class="metric-card metric-profit" id="pnl-card">
-      <p class="eyebrow">Net season P&amp;L</p>
-      <h3 class="font-display mt-3 text-5xl leading-none" id="stat-pnl">+₹ 0</h3>
-      <p class="mt-3 text-sm leading-7 text-[var(--muted)]">The cleanest single number on the board.</p>
-    </article>
+          <div class="spark-shell" id="hero-spark" aria-label="Equity overview"></div>
+        </div>
+      </section>
 
-    <article class="metric-card">
-      <p class="eyebrow">Strike rate</p>
-      <h3 class="font-mono-display mt-4 text-3xl" id="stat-winrate">0%</h3>
-      <p class="mt-3 text-sm leading-7 text-[var(--muted)]">Wins divided by all settled positions.</p>
-    </article>
+      <section class="metric-grid">
+        <article class="stat-card primary">
+          <div class="metric-label">Total Lagaya</div>
+          <div class="metric-value" id="metric-invested">₹0</div>
+          <p class="metric-caption">All stake committed across the ledger.</p>
+          <div class="metric-bar"><span id="bar-invested"></span></div>
+        </article>
+        <article class="stat-card secondary">
+          <div class="metric-label">Total Banaya</div>
+          <div class="metric-value" id="metric-returned">₹0</div>
+          <p class="metric-caption">Settled returns synced from the same bets table.</p>
+          <div class="metric-bar"><span id="bar-returned"></span></div>
+        </article>
+        <article class="stat-card tertiary">
+          <div class="metric-label">Win Rate</div>
+          <div class="metric-value" id="metric-win-rate">0%</div>
+          <p class="metric-caption">Share of settled entries that finished in profit.</p>
+          <div class="metric-bar"><span id="bar-win-rate"></span></div>
+        </article>
+        <article class="stat-card">
+          <div class="metric-label">Average Stake</div>
+          <div class="metric-value" id="metric-average">₹0</div>
+          <p class="metric-caption">Typical lagaya size across the current ledger.</p>
+          <div class="metric-bar"><span id="bar-average"></span></div>
+        </article>
+      </section>
 
-    <article class="metric-card">
-      <p class="eyebrow">Return on stake</p>
-      <h3 class="font-mono-display mt-4 text-3xl" id="stat-roi">0%</h3>
-      <p class="mt-3 text-sm leading-7 text-[var(--muted)]">Profit relative to deployed capital.</p>
-    </article>
-
-    <article class="metric-card">
-      <p class="eyebrow">Current streak</p>
-      <div class="mt-4 flex items-center gap-2">
-        <h3 class="font-display text-5xl leading-none" id="stat-streak">—</h3>
-        <span class="material-symbols-outlined hidden" id="streak-fire">local_fire_department</span>
-      </div>
-      <p class="mt-3 text-sm leading-7 text-[var(--muted)]">A quick read on the latest run of settled results.</p>
-    </article>
-  </section>
-
-  <section class="hidden grid gap-4 xl:grid-cols-[1.25fr_0.75fr]" id="zone-charts">
-    <div class="grid gap-4">
-      <article class="panel-card p-5 md:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+      <section class="section" id="ledger">
+        <div class="section-header">
           <div>
-            <p class="eyebrow">Equity curve</p>
-            <h2 class="font-display mt-2 text-4xl">Season trajectory</h2>
+            <div class="kicker">Ledger Feed</div>
+            <h2 class="section-title">Recent activity</h2>
+            <p class="section-copy">The primary operational view for settled wins, losses, and still-open exposure.</p>
           </div>
-          <span class="chip" id="equity-week-change">No data yet</span>
+          <div class="panel-actions">
+            <div class="filter-group" aria-label="Ledger filter">
+              <button class="tag-button is-active" data-filter="all" type="button">All</button>
+              <button class="tag-button" data-filter="win" type="button">Wins</button>
+              <button class="tag-button" data-filter="loss" type="button">Losses</button>
+              <button class="tag-button" data-filter="pending" type="button">Pending</button>
+            </div>
+            <span class="chip" id="activity-count">0 entries</span>
+          </div>
         </div>
-        <div class="mt-6 h-56">
-          <canvas id="equityChart"></canvas>
-        </div>
-      </article>
 
-      <article class="panel-card p-5 md:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="ledger-layout">
+          <div class="feed-stack" id="activity-list"></div>
+          <div class="summary-stack">
+            <article class="summary-card accent">
+              <div class="kicker">Pulse</div>
+              <h3 class="panel-title">Daily rhythm</h3>
+              <p class="summary-copy">A quick scan of the latest tracked days so you can spot when the ledger is heating up.</p>
+              <div class="detail-list" id="pulse-list"></div>
+            </article>
+            <article class="summary-card">
+              <div class="kicker">Route Split</div>
+              <h3 class="panel-title">Next action</h3>
+              <p class="summary-copy">Use the dashboard for operations and the analytics route for deeper pattern review.</p>
+              <div class="auth-footer-row">
+                <button class="ghost-button" data-open-drawer type="button">Add entry</button>
+                <a class="ghost-button" href="/analytics">View analytics</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="live">
+        <div class="section-header">
           <div>
-            <p class="eyebrow">Daily swing</p>
-            <h2 class="font-display mt-2 text-4xl">Profit by day</h2>
+            <div class="kicker">Open Exposure</div>
+            <h2 class="section-title">Live positions</h2>
+            <p class="section-copy">Every pending bet stays visible here until the banaya value is entered and the generated result settles.</p>
           </div>
-          <span class="chip">Net by date</span>
+          <span class="chip -pending" id="live-count">0 live positions</span>
         </div>
-        <div class="mt-6 h-56">
-          <canvas id="dailyChart"></canvas>
-        </div>
-      </article>
-    </div>
+        <div class="feed-stack" id="live-list"></div>
+      </section>
 
-    <div class="grid gap-4">
-      <article class="panel-card p-5 md:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+      <section class="section" id="account">
+        <div class="section-header">
           <div>
-            <p class="eyebrow">Outcome mix</p>
-            <h2 class="font-display mt-2 text-4xl">Result balance</h2>
+            <div class="kicker">Operator Profile</div>
+            <h2 class="section-title">Account summary</h2>
+            <p class="section-copy">Your identity, ledger footprint, and the highest-signal account markers in one place.</p>
           </div>
-          <span class="chip">Wins / losses / live</span>
         </div>
 
-        <div class="mt-6 grid items-center gap-6 md:grid-cols-[0.92fr_1.08fr] xl:grid-cols-1">
-          <div class="mx-auto relative h-48 w-48">
-            <canvas id="donutChart"></canvas>
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span class="font-display text-5xl leading-none" id="donut-total">0</span>
-              <span class="eyebrow mt-2">Total bets</span>
-            </div>
-          </div>
-
-          <div class="space-y-3" id="donut-legend">
-            <div class="data-chip flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="h-3 w-3 rounded-full" style="background: var(--teal);"></span>
-                <span class="text-sm font-semibold">Wins</span>
+        <div class="account-layout">
+          <article class="summary-card accent profile-card">
+            <div class="split-row">
+              <div class="profile-badge" id="user-badge">OP</div>
+              <div class="profile-meta">
+                <div class="kicker">Supabase Identity</div>
+                <h3 id="user-name">Operator</h3>
+                <p id="user-email">operator@sattasheet.app</p>
               </div>
-              <span class="font-mono-display text-sm" id="legend-wins">0</span>
             </div>
-            <div class="data-chip flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="h-3 w-3 rounded-full" style="background: var(--rose);"></span>
-                <span class="text-sm font-semibold">Losses</span>
+
+            <div class="grid-two">
+              <div class="detail-card">
+                <span class="meta-label">Tracked Days</span>
+                <strong class="summary-value" id="account-days">0</strong>
               </div>
-              <span class="font-mono-display text-sm" id="legend-losses">0</span>
-            </div>
-            <div class="data-chip flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="h-3 w-3 rounded-full" style="background: var(--amber);"></span>
-                <span class="text-sm font-semibold">Pending</span>
+              <div class="detail-card">
+                <span class="meta-label">Total Entries</span>
+                <strong class="summary-value" id="account-total-bets">0</strong>
               </div>
-              <span class="font-mono-display text-sm" id="legend-pending">0</span>
+              <div class="detail-card">
+                <span class="meta-label">Open Exposure</span>
+                <strong class="summary-value" id="account-exposure">₹0</strong>
+              </div>
+              <div class="detail-card">
+                <span class="meta-label">Current Streak</span>
+                <strong class="summary-value" id="account-streak">No streak</strong>
+              </div>
             </div>
+
+            <div>
+              <div class="meta-label">Account Edge Meter</div>
+              <div class="summary-line"><span id="account-summary-bar"></span></div>
+            </div>
+
+            <div class="detail-list" id="account-summary-list"></div>
+
+            <div class="auth-footer-row">
+              <button class="ghost-button" data-signout type="button">Sign out</button>
+              <a class="ghost-button" href="/analytics">Analytics route</a>
+            </div>
+          </article>
+
+          <div class="summary-stack">
+            <article class="summary-card">
+              <div class="kicker">Best Day</div>
+              <div class="summary-value" id="account-best-day">—</div>
+              <p class="summary-copy">Highest positive day across the currently loaded ledger history.</p>
+            </article>
+            <article class="summary-card">
+              <div class="kicker">Worst Day</div>
+              <div class="summary-value" id="account-worst-day">—</div>
+              <p class="summary-copy">Largest downside day, useful for calibrating risk and stake sizing.</p>
+            </article>
+            <article class="summary-card">
+              <div class="kicker">Recent Daily Summary</div>
+              <h3 class="panel-title">Last tracked days</h3>
+              <p class="summary-copy">A compact per-day readout before you jump into deeper analytics.</p>
+              <div class="detail-list" id="account-daily-list"></div>
+            </article>
           </div>
         </div>
-      </article>
-
-      <article class="panel-card p-5 md:p-6">
-        <p class="eyebrow">Snapshot</p>
-        <h2 class="font-display mt-2 text-4xl">Account pulse</h2>
-        <div class="mt-6 grid gap-3">
-          <div class="data-chip">
-            <p class="eyebrow">Email</p>
-            <p class="mt-3 break-all text-sm font-semibold" id="account-email-preview">—</p>
-          </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="data-chip">
-              <p class="eyebrow">Tracked days</p>
-              <p class="font-mono-display mt-3 text-2xl" id="account-days">0</p>
-            </div>
-            <div class="data-chip">
-              <p class="eyebrow">Open bets</p>
-              <p class="font-mono-display mt-3 text-2xl" id="account-open-bets">0</p>
-            </div>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <section class="space-y-4" id="zone-bets">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <p class="eyebrow">Ledger feed</p>
-        <h2 class="font-display mt-2 text-4xl md:text-5xl">Every entry, clearer.</h2>
-      </div>
-
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <span class="chip" id="feed-count">0 entries</span>
-        <div class="flex flex-wrap gap-2" id="filter-tabs">
-          <button class="filter-tab is-active" data-filter="all" type="button">All</button>
-          <button class="filter-tab" data-filter="win" type="button">Wins</button>
-          <button class="filter-tab" data-filter="loss" type="button">Losses</button>
-          <button class="filter-tab" data-filter="pending" type="button">Pending</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid gap-3 xl:grid-cols-2" id="bets-container"></div>
-  </section>
-
-  <section class="hidden space-y-4" id="zone-live">
-    <div>
-      <p class="eyebrow">Live exposure</p>
-      <h2 class="font-display mt-2 text-4xl md:text-5xl">Positions still in play.</h2>
-    </div>
-
-    <div class="grid gap-3 xl:grid-cols-2" id="live-bets-container"></div>
-    <div class="empty-state hidden" id="no-live">
-      <span class="material-symbols-outlined text-4xl">sensors_off</span>
-      <p class="font-display mt-4 text-3xl">Nothing is live right now.</p>
-      <p class="mt-2 text-sm leading-7 text-[var(--muted)]">Open entries will show up here automatically as soon as you leave returns empty.</p>
-    </div>
-  </section>
-
-  <section class="hidden" id="zone-account">
-    <div class="panel-card p-6 md:p-8">
-      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p class="eyebrow">Account view</p>
-          <h2 class="font-display mt-2 text-4xl md:text-5xl">Your private seat.</h2>
-          <p class="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-            A quick glance at who is signed in, how long this ledger has been active, and how much of the season is still live.
-          </p>
-        </div>
-        <span class="chip" id="account-email-chip">—</span>
-      </div>
-
-      <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article class="signal-card md:col-span-2">
-          <p class="eyebrow">Email</p>
-          <p class="mt-3 break-all text-lg font-semibold" id="account-email">—</p>
-        </article>
-        <article class="signal-card">
-          <p class="eyebrow">Tracked days</p>
-          <p class="font-mono-display mt-3 text-3xl" id="account-days-account">0</p>
-        </article>
-        <article class="signal-card">
-          <p class="eyebrow">Total bets</p>
-          <p class="font-mono-display mt-3 text-3xl" id="account-total-bets">0</p>
-        </article>
-        <article class="signal-card">
-          <p class="eyebrow">Open bets</p>
-          <p class="font-mono-display mt-3 text-3xl" id="account-open-bets-account">0</p>
-        </article>
-        <article class="signal-card">
-          <p class="eyebrow">Season net</p>
-          <p class="font-mono-display mt-3 text-3xl" id="account-season-net-account">+₹ 0</p>
-        </article>
-      </div>
-
-      <div class="mt-6 flex flex-col gap-4 border-t border-[var(--line)] pt-6 lg:flex-row lg:items-center lg:justify-between">
-        <p class="max-w-2xl text-sm leading-7 text-[var(--muted)]">
-          Sign out when you are done and the next session will begin with the same refined dashboard and your stored data intact.
-        </p>
-        <button class="ghost-button" id="account-logout-btn" type="button">Sign out</button>
-      </div>
-    </div>
-  </section>
-</main>
-
-<button class="action-button fixed bottom-24 right-6 z-40 hidden md:inline-flex items-center gap-2" id="fab-btn" type="button">
-  <span class="material-symbols-outlined text-[20px]">add</span>
-  New entry
-</button>
-
-<button class="action-button fixed bottom-24 right-5 z-40 inline-flex h-16 w-16 items-center justify-center rounded-full md:hidden" id="fab-btn-mobile" type="button">
-  <span class="material-symbols-outlined text-[24px]">add</span>
-</button>
-
-<nav class="fixed bottom-4 left-1/2 z-50 w-[calc(100%-1.5rem)] max-w-2xl -translate-x-1/2 px-1">
-  <div class="nav-shell flex items-center justify-between gap-2 px-2 py-2">
-    <button class="nav-item is-active" data-nav="ledger" id="nav-ledger" type="button">
-      <span class="material-symbols-outlined">dashboard</span>
-      <span>Ledger</span>
-    </button>
-    <button class="nav-item" data-nav="live" id="nav-live" type="button">
-      <span class="material-symbols-outlined">sensors</span>
-      <span>Live</span>
-    </button>
-    <button class="nav-item" data-nav="stats" id="nav-stats" type="button">
-      <span class="material-symbols-outlined">insert_chart</span>
-      <span>Stats</span>
-    </button>
-    <button class="nav-item" data-nav="account" id="nav-account" type="button">
-      <span class="material-symbols-outlined">person</span>
-      <span>Account</span>
-    </button>
-  </div>
-</nav>
-
-<div class="drawer-hidden fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" id="drawer-wrapper">
-  <div class="drawer-overlay absolute inset-0" id="drawer-overlay-bg"></div>
-  <div class="drawer-panel relative z-10 mx-0 w-full p-6 md:mx-auto md:mb-4 md:max-w-2xl">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <p class="eyebrow">Fresh position</p>
-        <h2 class="font-display mt-2 text-4xl md:text-5xl">Log a new entry</h2>
-      </div>
-      <button class="icon-button" id="drawer-close-btn" type="button">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-
-    <form class="mt-6 space-y-4" id="bet-form">
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="form-field">
-          <label for="bet-date">Date</label>
-          <input id="bet-date" type="date"/>
-        </div>
-
-        <div class="form-field">
-          <label for="bet-match">Match label</label>
-          <input id="bet-match" placeholder="e.g. LSG vs DC" type="text"/>
-        </div>
-      </div>
-
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="form-field">
-          <label for="bet-lagaya">Stake</label>
-          <input id="bet-lagaya" min="1" placeholder="0.00" step="any" type="number"/>
-        </div>
-
-        <div class="form-field">
-          <label for="bet-banaya">Return</label>
-          <input id="bet-banaya" min="0" placeholder="Leave empty for pending" step="any" type="number"/>
-        </div>
-      </div>
-
-      <div class="status-message hidden" id="bet-form-error"></div>
-
-      <div class="panel-card p-5">
-        <p class="eyebrow">Projected net</p>
-        <p class="font-display mt-3 text-5xl leading-none" id="projected-net">+₹ 0</p>
-        <p class="mt-3 text-sm leading-7 text-[var(--muted)]">Leave return empty to keep the position live and revisit it later.</p>
-      </div>
-
-      <button class="action-button w-full justify-center" id="bet-submit-btn" type="submit">Log bet transaction</button>
-    </form>
-  </div>
-</div>
-
-<div class="toast-card toast-hide fixed bottom-24 left-4 z-50 flex items-center gap-3 px-4 py-3" id="toast">
-  <span class="material-symbols-outlined" style="color: var(--teal);">check_circle</span>
-  <span class="text-sm font-semibold" id="toast-text">Entry logged successfully</span>
-</div>
-
-<script>
-const runtimeConfig = window.__APP_CONFIG__ || {}
-const runtimeConfigError = !runtimeConfig.supabaseUrl || !runtimeConfig.supabaseAnonKey
-  ? 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy or restart `vercel dev`.'
-  : null
-const sb = runtimeConfigError
-  ? null
-  : window.supabase.createClient(runtimeConfig.supabaseUrl, runtimeConfig.supabaseAnonKey)
-
-let currentUser = null
-let allBets = []
-let activeFilter = 'all'
-let activeNav = 'ledger'
-let equityChartInstance = null
-let donutChartInstance = null
-let dailyChartInstance = null
-
-const SEED_BETS = [
-  { date: '2025-03-28', lagaya: 500, banaya: 1100 },
-  { date: '2025-03-29', lagaya: 300, banaya: 596 },
-  { date: '2025-03-29', lagaya: 295, banaya: 590 },
-  { date: '2025-03-29', lagaya: 300, banaya: 630 },
-  { date: '2025-03-29', lagaya: 200, banaya: 400 },
-  { date: '2025-03-29', lagaya: 100, banaya: 0 },
-  { date: '2025-03-29', lagaya: 100, banaya: 0 },
-  { date: '2025-03-29', lagaya: 101, banaya: 0 },
-  { date: '2025-03-30', lagaya: 200, banaya: 400 },
-  { date: '2025-03-30', lagaya: 200, banaya: 380 },
-  { date: '2025-03-30', lagaya: 300, banaya: 600 },
-  { date: '2025-03-30', lagaya: 100, banaya: 0 },
-  { date: '2025-03-30', lagaya: 100, banaya: 0 },
-  { date: '2025-03-30', lagaya: 200, banaya: 400 },
-  { date: '2025-03-30', lagaya: 100, banaya: 200 },
-  { date: '2025-03-30', lagaya: 200, banaya: 400 },
-  { date: '2025-03-30', lagaya: 200, banaya: 400 },
-  { date: '2025-04-02', lagaya: 200, banaya: 0 },
-  { date: '2025-04-02', lagaya: 200, banaya: 0 },
-  { date: '2025-04-02', lagaya: 200, banaya: 400 },
-  { date: '2025-04-02', lagaya: 200, banaya: 0 },
-  { date: '2025-04-02', lagaya: 200, banaya: 0 },
-  { date: '2025-04-02', lagaya: 300, banaya: null },
-  { date: '2025-04-02', lagaya: 200, banaya: null },
-]
-
-function renderFatalConfigError(message) {
-  document.body.innerHTML = `
-    <main class="relative flex min-h-screen items-center justify-center px-5 py-10">
-      <section class="panel-card max-w-xl p-8">
-        <p class="eyebrow">Configuration issue</p>
-        <h1 class="font-display mt-3 text-5xl leading-[0.95]">Supabase keys are missing.</h1>
-        <p class="mt-5 text-sm leading-7 text-[var(--muted)]">${esc(message)}</p>
       </section>
     </main>
-  `
-}
+  </div>
 
-function getThemeVar(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-}
+  <div class="fab-desktop">
+    <button class="fab-button" data-open-drawer type="button" aria-label="Add new entry">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+  </div>
 
-function hexToRgba(hex, alpha) {
-  const value = hex.replace('#', '')
-  const normalized = value.length === 3
-    ? value.split('').map((char) => char + char).join('')
-    : value
-  const int = parseInt(normalized, 16)
-  const r = (int >> 16) & 255
-  const g = (int >> 8) & 255
-  const b = int & 255
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
+  <div class="fab-mobile">
+    <button class="fab-button" data-open-drawer type="button" aria-label="Add new entry">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+  </div>
 
-function formatShortTime(date) {
-  return new Intl.DateTimeFormat('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit'
-  }).format(date)
-}
+  <nav class="bottom-nav" aria-label="Bottom navigation">
+    <a class="bottom-nav-link is-active" data-nav-link="ledger" href="#ledger">
+      <span class="material-symbols-outlined">view_timeline</span>
+      <span>Ledger</span>
+    </a>
+    <a class="bottom-nav-link" data-nav-link="live" href="#live">
+      <span class="material-symbols-outlined">bolt</span>
+      <span>Live</span>
+    </a>
+    <a class="bottom-nav-link" href="/analytics">
+      <span class="material-symbols-outlined">query_stats</span>
+      <span>Analytics</span>
+    </a>
+    <a class="bottom-nav-link" data-nav-link="account" href="#account">
+      <span class="material-symbols-outlined">person</span>
+      <span>Account</span>
+    </a>
+  </nav>
 
-function initTheme() {
-  const saved = localStorage.getItem('ipl-theme')
-  if (saved === 'light') applyLight(false)
-  else applyDark(false)
-}
-
-function applyLight(shouldRender = true) {
-  document.documentElement.classList.add('light')
-  document.getElementById('theme-icon').textContent = 'dark_mode'
-  localStorage.setItem('ipl-theme', 'light')
-  if (shouldRender) rerenderCharts()
-}
-
-function applyDark(shouldRender = true) {
-  document.documentElement.classList.remove('light')
-  document.getElementById('theme-icon').textContent = 'light_mode'
-  localStorage.setItem('ipl-theme', 'dark')
-  if (shouldRender) rerenderCharts()
-}
-
-function toggleTheme() {
-  if (document.documentElement.classList.contains('light')) applyDark()
-  else applyLight()
-}
-
-function isDark() {
-  return !document.documentElement.classList.contains('light')
-}
-
-async function init() {
-  initTheme()
-
-  const { data: { session } } = await sb.auth.getSession()
-  if (!session) {
-    window.location.href = 'index.html'
-    return
-  }
-
-  currentUser = session.user
-  document.getElementById('account-email').textContent = currentUser.email || '—'
-  document.getElementById('account-email-chip').textContent = currentUser.email || '—'
-  document.getElementById('account-email-preview').textContent = currentUser.email || '—'
-  document.getElementById('hero-user-pill').textContent = currentUser.email || 'Private account'
-
-  const { count } = await sb.from('bets').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
-  if (count === 0) {
-    const rows = SEED_BETS.map((bet) => ({ ...bet, user_id: currentUser.id }))
-    await sb.from('bets').insert(rows)
-  }
-
-  await fetchAndRender()
-  setupEventListeners()
-}
-
-async function fetchAndRender() {
-  const { data, error } = await sb
-    .from('bets')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('date', { ascending: true })
-    .order('created_at', { ascending: true })
-
-  if (error) {
-    console.error(error)
-    return
-  }
-
-  allBets = data || []
-  renderStats()
-  renderCharts()
-  renderBets()
-  renderLive()
-  renderAccountSummary()
-  document.getElementById('hero-sync-chip').textContent = `Synced ${formatShortTime(new Date())}`
-}
-
-function renderStats() {
-  const invested = allBets.reduce((sum, bet) => sum + Number(bet.lagaya), 0)
-  const returned = allBets.reduce((sum, bet) => sum + (bet.banaya != null ? Number(bet.banaya) : 0), 0)
-  const netProfit = allBets.reduce((sum, bet) => sum + Number(bet.net_profit || 0), 0)
-  const settled = allBets.filter((bet) => bet.result !== 'pending')
-  const pending = allBets.filter((bet) => bet.result === 'pending')
-  const wins = settled.filter((bet) => bet.result === 'win').length
-  const winRate = settled.length > 0 ? (wins / settled.length) * 100 : 0
-  const roi = invested > 0 ? (netProfit / invested) * 100 : 0
-
-  const sortedSettled = [...settled].sort((a, b) => {
-    const dateDiff = new Date(b.date) - new Date(a.date)
-    if (dateDiff !== 0) return dateDiff
-    return new Date(b.created_at) - new Date(a.created_at)
-  })
-
-  let streak = 0
-  let streakType = ''
-  if (sortedSettled.length > 0) {
-    streakType = sortedSettled[0].result
-    for (const bet of sortedSettled) {
-      if (bet.result === streakType) streak += 1
-      else break
-    }
-  }
-
-  animateValue('stat-invested', 0, invested, 850, (value) => `₹ ${fmtNum(value)}`)
-  animateValue('stat-returned', 0, returned, 850, (value) => `₹ ${fmtNum(value)}`)
-  animateValue('stat-pnl', 0, netProfit, 850, (value) => `${value >= 0 ? '+' : '-'}₹ ${fmtNum(Math.abs(value))}`)
-  animateValue('stat-winrate', 0, winRate, 850, (value) => `${value.toFixed(1)}%`)
-  animateValue('stat-roi', 0, roi, 850, (value) => `${value.toFixed(1)}%`)
-
-  const pnlCard = document.getElementById('pnl-card')
-  const pnlEl = document.getElementById('stat-pnl')
-  pnlCard.classList.toggle('metric-profit', netProfit >= 0)
-  pnlCard.classList.toggle('metric-loss', netProfit < 0)
-  pnlEl.style.color = netProfit >= 0 ? 'var(--teal)' : 'var(--rose)'
-
-  const streakEl = document.getElementById('stat-streak')
-  const fireEl = document.getElementById('streak-fire')
-  if (streak > 0) {
-    const isWinning = streakType === 'win'
-    streakEl.textContent = `${isWinning ? 'W' : 'L'}${streak}`
-    streakEl.style.color = isWinning ? 'var(--teal)' : 'var(--rose)'
-    fireEl.style.color = 'var(--gold)'
-    fireEl.classList.toggle('hidden', !isWinning)
-  } else {
-    streakEl.textContent = '—'
-    streakEl.style.color = 'var(--text)'
-    fireEl.classList.add('hidden')
-  }
-
-  document.getElementById('hero-live-chip').textContent = `${pending.length} live positions`
-  document.getElementById('hero-total-bets').textContent = String(allBets.length)
-  document.getElementById('hero-winrate-pill').textContent = `${winRate.toFixed(1)}%`
-  document.getElementById('account-season-net').textContent = `${netProfit >= 0 ? '+' : '-'}₹ ${fmtNum(Math.abs(netProfit))}`
-  document.getElementById('account-season-net-account').textContent = `${netProfit >= 0 ? '+' : '-'}₹ ${fmtNum(Math.abs(netProfit))}`
-  document.getElementById('account-open-bets').textContent = String(pending.length)
-  document.getElementById('account-open-bets-account').textContent = String(pending.length)
-  document.getElementById('account-total-bets').textContent = String(allBets.length)
-}
-
-function animateValue(id, start, end, duration, formatter) {
-  const el = document.getElementById(id)
-  if (!el) return
-
-  const startTime = performance.now()
-  function tick(now) {
-    const elapsed = now - startTime
-    const progress = Math.min(elapsed / duration, 1)
-    const eased = 1 - Math.pow(1 - progress, 3)
-    const current = start + (end - start) * eased
-    el.textContent = formatter(current)
-    if (progress < 1) requestAnimationFrame(tick)
-  }
-
-  requestAnimationFrame(tick)
-}
-
-function fmtNum(value) {
-  return Math.round(value).toLocaleString('en-IN')
-}
-
-function fmtCompact(value) {
-  if (value >= 100000) return `${(value / 100000).toFixed(1)}L`
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}K`
-  return fmtNum(value)
-}
-
-function renderCharts() {
-  renderEquityChart()
-  renderDonutChart()
-  renderDailyChart()
-}
-
-function rerenderCharts() {
-  renderCharts()
-}
-
-function getChartTextColor() {
-  return getThemeVar('--muted') || '#9aa8ba'
-}
-
-function getChartGridColor() {
-  return isDark() ? 'rgba(255,255,255,0.08)' : 'rgba(20,32,51,0.08)'
-}
-
-function renderEquityChart() {
-  const ctx = document.getElementById('equityChart')
-  if (!ctx) return
-  if (equityChartInstance) equityChartInstance.destroy()
-
-  const sorted = [...allBets].sort((a, b) => new Date(a.date) - new Date(b.date) || new Date(a.created_at) - new Date(b.created_at))
-  let cumulative = 0
-  const labels = []
-  const values = []
-
-  sorted.forEach((bet) => {
-    cumulative += Number(bet.net_profit || 0)
-    labels.push(bet.date)
-    values.push(cumulative)
-  })
-
-  const accent = getThemeVar('--accent') || '#95b3ff'
-  const gold = getThemeVar('--gold') || '#d1b180'
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-  const weekChange = sorted
-    .filter((bet) => new Date(bet.date) >= sevenDaysAgo)
-    .reduce((sum, bet) => sum + Number(bet.net_profit || 0), 0)
-  document.getElementById('equity-week-change').textContent = sorted.length
-    ? `7D ${weekChange >= 0 ? '+' : '-'}₹ ${fmtNum(Math.abs(weekChange))}`
-    : 'No data yet'
-
-  equityChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        borderColor: accent,
-        backgroundColor: (context) => {
-          const chart = context.chart
-          const { ctx: drawingContext, chartArea } = chart
-          if (!chartArea) return 'transparent'
-          const gradient = drawingContext.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-          gradient.addColorStop(0, hexToRgba(accent, 0.3))
-          gradient.addColorStop(1, hexToRgba(gold, 0.02))
-          return gradient
-        },
-        borderWidth: 2.4,
-        tension: 0.4,
-        pointRadius: 0,
-        fill: true
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      interaction: { intersect: false, mode: 'index' },
-      scales: {
-        x: {
-          ticks: { color: getChartTextColor(), font: { family: 'IBM Plex Mono', size: 10 } },
-          grid: { display: false }
-        },
-        y: {
-          ticks: {
-            color: getChartTextColor(),
-            font: { family: 'IBM Plex Mono', size: 10 },
-            callback: (value) => `₹ ${fmtCompact(Math.abs(value))}`
-          },
-          grid: { color: getChartGridColor() }
-        }
-      }
-    }
-  })
-}
-
-function renderDonutChart() {
-  const ctx = document.getElementById('donutChart')
-  if (!ctx) return
-  if (donutChartInstance) donutChartInstance.destroy()
-
-  const wins = allBets.filter((bet) => bet.result === 'win').length
-  const losses = allBets.filter((bet) => bet.result === 'loss').length
-  const pending = allBets.filter((bet) => bet.result === 'pending').length
-
-  document.getElementById('donut-total').textContent = String(allBets.length)
-  document.getElementById('legend-wins').textContent = wins
-  document.getElementById('legend-losses').textContent = losses
-  document.getElementById('legend-pending').textContent = pending
-
-  donutChartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Wins', 'Losses', 'Pending'],
-      datasets: [{
-        data: [wins, losses, pending],
-        backgroundColor: [getThemeVar('--teal'), getThemeVar('--rose'), getThemeVar('--amber')],
-        borderWidth: 0,
-        hoverOffset: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '74%',
-      plugins: { legend: { display: false } }
-    }
-  })
-}
-
-function renderDailyChart() {
-  const ctx = document.getElementById('dailyChart')
-  if (!ctx) return
-  if (dailyChartInstance) dailyChartInstance.destroy()
-
-  const dailyMap = {}
-  allBets.forEach((bet) => {
-    if (!dailyMap[bet.date]) dailyMap[bet.date] = 0
-    dailyMap[bet.date] += Number(bet.net_profit || 0)
-  })
-
-  const dates = Object.keys(dailyMap).sort()
-  const values = dates.map((date) => dailyMap[date])
-  const positive = getThemeVar('--teal')
-  const negative = getThemeVar('--rose')
-
-  dailyChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: dates.map((date) => {
-        const parts = date.split('-')
-        return `${parts[2]}/${parts[1]}`
-      }),
-      datasets: [{
-        data: values,
-        backgroundColor: values.map((value) => value >= 0 ? positive : negative),
-        borderRadius: 10,
-        borderSkipped: false
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: {
-          ticks: { color: getChartTextColor(), font: { family: 'IBM Plex Mono', size: 10 } },
-          grid: { display: false }
-        },
-        y: {
-          ticks: { color: getChartTextColor(), font: { family: 'IBM Plex Mono', size: 10 } },
-          grid: { color: getChartGridColor() }
-        }
-      }
-    }
-  })
-}
-
-function renderBets() {
-  const container = document.getElementById('bets-container')
-  const sorted = [...allBets].sort((a, b) => new Date(b.date) - new Date(a.date) || new Date(b.created_at) - new Date(a.created_at))
-
-  let filtered = sorted
-  if (activeFilter === 'win') filtered = sorted.filter((bet) => bet.result === 'win')
-  else if (activeFilter === 'loss') filtered = sorted.filter((bet) => bet.result === 'loss')
-  else if (activeFilter === 'pending') filtered = sorted.filter((bet) => bet.result === 'pending')
-
-  document.getElementById('feed-count').textContent = `${filtered.length} ${filtered.length === 1 ? 'entry' : 'entries'}`
-
-  if (filtered.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state xl:col-span-2">
-        <span class="material-symbols-outlined text-4xl">search_off</span>
-        <p class="font-display mt-4 text-3xl">No bets in this view.</p>
-        <p class="mt-2 text-sm leading-7 text-[var(--muted)]">Try another filter or log a fresh entry to populate the ledger.</p>
-      </div>
-    `
-    return
-  }
-
-  container.innerHTML = filtered.map((bet, index) => betCardHTML(bet, index)).join('')
-}
-
-function betCardHTML(bet, index) {
-  const dateStr = new Date(`${bet.date}T00:00:00`).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  }).toUpperCase()
-  const label = bet.match_label || `Market entry #${index + 1}`
-  const net = Number(bet.net_profit || 0)
-
-  if (bet.result === 'pending') {
-    return `
-      <article class="feed-card pending">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <p class="eyebrow">${dateStr}</p>
-            <h3 class="font-display mt-2 text-3xl leading-tight">${esc(label)}</h3>
-          </div>
-          <span class="result-pill pending">Pending</span>
-        </div>
-
-        <div class="mt-5 grid gap-3 sm:grid-cols-3">
-          <div class="data-chip">
-            <p class="eyebrow">Stake</p>
-            <p class="font-mono-display mt-3 text-lg">₹ ${fmtNum(bet.lagaya)}</p>
-          </div>
-          <div class="data-chip">
-            <p class="eyebrow">Expected return</p>
-            <p class="font-mono-display mt-3 text-lg">—</p>
-          </div>
-          <div class="data-chip">
-            <p class="eyebrow">Status</p>
-            <p class="mt-3 text-lg font-semibold" style="color: var(--amber);">In play</p>
-          </div>
-        </div>
-      </article>
-    `
-  }
-
-  const isWin = bet.result === 'win'
-  return `
-    <article class="feed-card ${isWin ? 'win' : 'loss'}">
-      <div class="flex items-start justify-between gap-4">
+  <div class="drawer-layer" id="entry-drawer" aria-hidden="true">
+    <div class="drawer-scrim" id="entry-drawer-scrim"></div>
+    <aside class="drawer-card">
+      <div class="drawer-head">
         <div>
-          <p class="eyebrow">${dateStr}</p>
-          <h3 class="font-display mt-2 text-3xl leading-tight">${esc(label)}</h3>
+          <div class="kicker">Log Entry</div>
+          <h2 class="drawer-title">New bet transaction</h2>
+          <p class="drawer-copy">Insert directly into the `bets` table and let Supabase compute the generated result fields.</p>
         </div>
-        <span class="result-pill ${isWin ? 'win' : 'loss'}">${isWin ? 'Win' : 'Loss'}</span>
+        <button class="icon-button" id="entry-drawer-close" type="button" aria-label="Close entry drawer">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
 
-      <div class="mt-5 grid gap-3 sm:grid-cols-3">
-        <div class="data-chip">
-          <p class="eyebrow">Stake</p>
-          <p class="font-mono-display mt-3 text-lg">₹ ${fmtNum(bet.lagaya)}</p>
+      <form class="form-stack" id="bet-form" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="bet-date">Date</label>
+          <div class="field-shell">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <input id="bet-date" name="date" type="date" required>
+          </div>
         </div>
-        <div class="data-chip">
-          <p class="eyebrow">Return</p>
-          <p class="font-mono-display mt-3 text-lg">₹ ${fmtNum(bet.banaya)}</p>
+
+        <div class="field-group">
+          <label class="field-label" for="bet-match">Market Label</label>
+          <div class="field-shell">
+            <span class="material-symbols-outlined">sports_score</span>
+            <input id="bet-match" name="match_label" type="text" placeholder="MI vs CSK / Open table / Session call">
+          </div>
         </div>
-        <div class="data-chip">
-          <p class="eyebrow">Net</p>
-          <p class="font-mono-display mt-3 text-lg" style="color: ${isWin ? 'var(--teal)' : 'var(--rose)'};">
-            ${net >= 0 ? '+' : '-'}₹ ${fmtCompact(Math.abs(net))}
-          </p>
+
+        <div class="form-grid two-up">
+          <div class="field-group">
+            <label class="field-label" for="bet-lagaya">Lagaya</label>
+            <div class="field-shell">
+              <span class="material-symbols-outlined">south_west</span>
+              <input id="bet-lagaya" name="lagaya" type="number" step="any" min="1" placeholder="0">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="bet-banaya">Banaya</label>
+            <div class="field-shell">
+              <span class="material-symbols-outlined">north_east</span>
+              <input id="bet-banaya" name="banaya" type="number" step="any" min="0" placeholder="Leave blank for pending">
+            </div>
+          </div>
         </div>
-      </div>
-    </article>
-  `
-}
 
-function renderLive() {
-  const pending = allBets
-    .filter((bet) => bet.result === 'pending')
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-  const container = document.getElementById('live-bets-container')
-  const noLive = document.getElementById('no-live')
+        <article class="detail-card">
+          <span class="meta-label">Projected Net</span>
+          <strong class="detail-value value-pending" id="projected-net">Pending</strong>
+          <p class="field-help">If `banaya` is empty the entry stays pending and appears in the live positions section.</p>
+        </article>
 
-  if (pending.length === 0) {
-    container.innerHTML = ''
-    noLive.classList.remove('hidden')
-    return
-  }
+        <div class="status-line" id="bet-form-error" data-tone="error" hidden></div>
 
-  noLive.classList.add('hidden')
-  container.innerHTML = pending.map((bet, index) => betCardHTML(bet, index)).join('')
-}
-
-function renderAccountSummary() {
-  const uniqueDates = [...new Set(allBets.map((bet) => bet.date))]
-  document.getElementById('account-days').textContent = String(uniqueDates.length)
-  document.getElementById('account-days-account').textContent = String(uniqueDates.length)
-}
-
-function syncNavStyles() {
-  document.querySelectorAll('.nav-item').forEach((element) => {
-    const isActive = element.dataset.nav === activeNav
-    element.classList.toggle('is-active', isActive)
-    const icon = element.querySelector('.material-symbols-outlined')
-    if (icon) {
-      icon.style.fontVariationSettings = isActive
-        ? "'FILL' 1, 'wght' 520, 'GRAD' 0, 'opsz' 24"
-        : "'FILL' 0, 'wght' 420, 'GRAD' 0, 'opsz' 24"
-    }
-  })
-}
-
-function syncFilterTabs() {
-  document.querySelectorAll('#filter-tabs button').forEach((button) => {
-    button.classList.toggle('is-active', button.dataset.filter === activeFilter)
-  })
-}
-
-function switchNav(nav) {
-  activeNav = nav
-  const zones = {
-    stats: 'zone-stats',
-    charts: 'zone-charts',
-    bets: 'zone-bets',
-    live: 'zone-live',
-    account: 'zone-account'
-  }
-
-  Object.values(zones).forEach((id) => document.getElementById(id).classList.add('hidden'))
-
-  const desktopFab = document.getElementById('fab-btn')
-  const mobileFab = document.getElementById('fab-btn-mobile')
-
-  if (nav === 'ledger') {
-    document.getElementById('zone-stats').classList.remove('hidden')
-    document.getElementById('zone-bets').classList.remove('hidden')
-    desktopFab.classList.remove('hidden')
-    mobileFab.classList.remove('hidden')
-  } else if (nav === 'stats') {
-    document.getElementById('zone-stats').classList.remove('hidden')
-    document.getElementById('zone-charts').classList.remove('hidden')
-    desktopFab.classList.add('hidden')
-    mobileFab.classList.add('hidden')
-    setTimeout(() => renderCharts(), 80)
-  } else if (nav === 'live') {
-    document.getElementById('zone-live').classList.remove('hidden')
-    desktopFab.classList.add('hidden')
-    mobileFab.classList.add('hidden')
-  } else if (nav === 'account') {
-    document.getElementById('zone-account').classList.remove('hidden')
-    desktopFab.classList.add('hidden')
-    mobileFab.classList.add('hidden')
-  }
-
-  syncNavStyles()
-}
-
-function openDrawer() {
-  document.getElementById('drawer-wrapper').classList.remove('drawer-hidden')
-  document.getElementById('bet-date').value = new Date().toISOString().split('T')[0]
-  document.body.style.overflow = 'hidden'
-}
-
-function closeDrawer() {
-  document.getElementById('drawer-wrapper').classList.add('drawer-hidden')
-  document.getElementById('bet-form').reset()
-  document.getElementById('projected-net').textContent = '+₹ 0'
-  document.getElementById('projected-net').style.color = 'var(--text)'
-  document.getElementById('bet-form-error').classList.add('hidden')
-  document.getElementById('bet-submit-btn').textContent = 'Log bet transaction'
-  document.getElementById('bet-submit-btn').disabled = false
-  document.body.style.overflow = ''
-}
-
-function updateProjectedNet() {
-  const lagaya = parseFloat(document.getElementById('bet-lagaya').value) || 0
-  const banayaInput = document.getElementById('bet-banaya').value
-  const projectedNet = document.getElementById('projected-net')
-
-  if (banayaInput === '' || banayaInput === null) {
-    projectedNet.textContent = 'Pending'
-    projectedNet.style.color = 'var(--amber)'
-    return
-  }
-
-  const banaya = parseFloat(banayaInput) || 0
-  const net = banaya - lagaya
-  projectedNet.textContent = `${net >= 0 ? '+' : '-'}₹ ${fmtNum(Math.abs(net))}`
-  projectedNet.style.color = net >= 0 ? 'var(--teal)' : 'var(--rose)'
-}
-
-function showToast(message) {
-  const toast = document.getElementById('toast')
-  document.getElementById('toast-text').textContent = message || 'Entry logged successfully'
-  toast.classList.remove('toast-hide')
-  toast.classList.add('toast-show')
-  setTimeout(() => {
-    toast.classList.remove('toast-show')
-    toast.classList.add('toast-hide')
-  }, 2400)
-}
-
-function esc(value) {
-  const div = document.createElement('div')
-  div.textContent = value
-  return div.innerHTML
-}
-
-function setupEventListeners() {
-  document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme)
-  document.getElementById('logout-btn').addEventListener('click', async () => {
-    await sb.auth.signOut()
-    window.location.href = 'index.html'
-  })
-  document.getElementById('account-logout-btn').addEventListener('click', async () => {
-    await sb.auth.signOut()
-    window.location.href = 'index.html'
-  })
-
-  document.getElementById('fab-btn').addEventListener('click', openDrawer)
-  document.getElementById('fab-btn-mobile').addEventListener('click', openDrawer)
-  document.getElementById('hero-add-btn').addEventListener('click', openDrawer)
-  document.getElementById('drawer-close-btn').addEventListener('click', closeDrawer)
-  document.getElementById('drawer-overlay-bg').addEventListener('click', closeDrawer)
-
-  document.querySelectorAll('[data-nav-target]').forEach((button) => {
-    button.addEventListener('click', () => switchNav(button.dataset.navTarget))
-  })
-
-  document.getElementById('bet-lagaya').addEventListener('input', updateProjectedNet)
-  document.getElementById('bet-banaya').addEventListener('input', updateProjectedNet)
-
-  document.getElementById('bet-form').addEventListener('submit', async (event) => {
-    event.preventDefault()
-
-    const errEl = document.getElementById('bet-form-error')
-    const lagaya = parseFloat(document.getElementById('bet-lagaya').value)
-    if (!lagaya || lagaya <= 0) {
-      errEl.textContent = 'Stake must be greater than 0.'
-      errEl.classList.remove('hidden')
-      return
-    }
-
-    errEl.classList.add('hidden')
-
-    const banayaValue = document.getElementById('bet-banaya').value
-    const banaya = banayaValue === '' ? null : parseFloat(banayaValue)
-    const dateValue = document.getElementById('bet-date').value
-    const matchLabel = document.getElementById('bet-match').value.trim() || null
-    const submitButton = document.getElementById('bet-submit-btn')
-
-    submitButton.textContent = 'Logging...'
-    submitButton.disabled = true
-
-    const { error } = await sb.from('bets').insert({
-      user_id: currentUser.id,
-      date: dateValue,
-      lagaya,
-      banaya,
-      match_label: matchLabel
-    })
-
-    submitButton.textContent = 'Log bet transaction'
-    submitButton.disabled = false
-
-    if (error) {
-      errEl.textContent = error.message
-      errEl.classList.remove('hidden')
-      return
-    }
-
-    closeDrawer()
-    showToast('Entry logged successfully')
-    await fetchAndRender()
-  })
-
-  document.querySelectorAll('#filter-tabs button').forEach((button) => {
-    button.addEventListener('click', () => {
-      activeFilter = button.dataset.filter
-      syncFilterTabs()
-      renderBets()
-    })
-  })
-
-  document.querySelectorAll('.nav-item').forEach((element) => {
-    element.addEventListener('click', () => switchNav(element.dataset.nav))
-  })
-}
-
-if (!sb) {
-  renderFatalConfigError(runtimeConfigError)
-} else {
-  switchNav('ledger')
-  syncFilterTabs()
-  init()
-}
-</script>
+        <div class="drawer-actions">
+          <button class="primary-button" id="bet-submit" type="submit">Log entry</button>
+          <button class="ghost-button" id="bet-cancel" type="button">Cancel</button>
+        </div>
+      </form>
+    </aside>
+  </div>
 </body>
 </html>

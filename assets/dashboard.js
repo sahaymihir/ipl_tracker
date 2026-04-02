@@ -1,0 +1,545 @@
+document.addEventListener('DOMContentLoaded', async () => {
+  const app = window.SattaSheetApp
+  const runtime = app.createSupabaseClient()
+  const client = runtime.client
+
+  const state = {
+    user: null,
+    bets: [],
+    stats: null,
+    filter: 'all'
+  }
+
+  const elements = {
+    fatal: document.getElementById('fatal-state'),
+    app: document.getElementById('dashboard-app'),
+    status: document.getElementById('dashboard-status'),
+    heroNet: document.getElementById('hero-net'),
+    heroNetTone: document.getElementById('hero-net-tone'),
+    heroRoi: document.getElementById('hero-roi'),
+    heroExposure: document.getElementById('hero-exposure'),
+    heroTracked: document.getElementById('hero-tracked'),
+    heroCopy: document.getElementById('hero-copy'),
+    heroSpark: document.getElementById('hero-spark'),
+    welcomeName: document.getElementById('welcome-name'),
+    userBadge: document.getElementById('user-badge'),
+    userName: document.getElementById('user-name'),
+    userEmail: document.getElementById('user-email'),
+    metricInvested: document.getElementById('metric-invested'),
+    metricReturned: document.getElementById('metric-returned'),
+    metricWinRate: document.getElementById('metric-win-rate'),
+    metricAverage: document.getElementById('metric-average'),
+    barInvested: document.getElementById('bar-invested'),
+    barReturned: document.getElementById('bar-returned'),
+    barWinRate: document.getElementById('bar-win-rate'),
+    barAverage: document.getElementById('bar-average'),
+    pulseList: document.getElementById('pulse-list'),
+    activityList: document.getElementById('activity-list'),
+    activityCount: document.getElementById('activity-count'),
+    liveList: document.getElementById('live-list'),
+    liveCount: document.getElementById('live-count'),
+    accountDays: document.getElementById('account-days'),
+    accountTotalBets: document.getElementById('account-total-bets'),
+    accountExposure: document.getElementById('account-exposure'),
+    accountBestDay: document.getElementById('account-best-day'),
+    accountWorstDay: document.getElementById('account-worst-day'),
+    accountStreak: document.getElementById('account-streak'),
+    accountSummaryList: document.getElementById('account-summary-list'),
+    accountDailyList: document.getElementById('account-daily-list'),
+    accountSummaryBar: document.getElementById('account-summary-bar'),
+    drawer: document.getElementById('entry-drawer'),
+    drawerScrim: document.getElementById('entry-drawer-scrim'),
+    openDrawerButtons: document.querySelectorAll('[data-open-drawer]'),
+    closeDrawer: document.getElementById('entry-drawer-close'),
+    cancelDrawer: document.getElementById('bet-cancel'),
+    logoutButtons: document.querySelectorAll('[data-signout]'),
+    form: document.getElementById('bet-form'),
+    formError: document.getElementById('bet-form-error'),
+    formDate: document.getElementById('bet-date'),
+    formMatch: document.getElementById('bet-match'),
+    formLagaya: document.getElementById('bet-lagaya'),
+    formBanaya: document.getElementById('bet-banaya'),
+    projectedNet: document.getElementById('projected-net'),
+    submit: document.getElementById('bet-submit'),
+    filterButtons: document.querySelectorAll('[data-filter]'),
+    navLinks: document.querySelectorAll('[data-nav-link]'),
+    lastUpdated: document.getElementById('last-updated')
+  }
+
+  function getInitials(name) {
+    return String(name || 'Operator')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0].toUpperCase())
+      .join('')
+  }
+
+  function formatSigned(value, compact) {
+    const absolute = compact ? app.formatCompact(Math.abs(value || 0)) : app.formatAmount(Math.abs(value || 0))
+    return `${value >= 0 ? '+' : '-'}₹${absolute}`
+  }
+
+  function fallbackLabel(bet, index) {
+    if (bet.match_label && String(bet.match_label).trim()) {
+      return String(bet.match_label).trim()
+    }
+
+    const result = app.getResult(bet)
+    if (result === 'pending') return `Open market entry #${index + 1}`
+    if (result === 'win') return `Settled profit #${index + 1}`
+    return `Settled ledger #${index + 1}`
+  }
+
+  function showFatal(message) {
+    elements.fatal.classList.remove('hidden')
+    elements.fatal.innerHTML = `
+      <div class="empty-state">
+        <span class="material-symbols-outlined">error</span>
+        <h3>Configuration blocked</h3>
+        <p class="empty-copy">${app.escapeHtml(message)}</p>
+      </div>
+    `
+  }
+
+  function showStatus(message, tone) {
+    if (!message) {
+      elements.status.hidden = true
+      elements.status.textContent = ''
+      return
+    }
+
+    elements.status.hidden = false
+    elements.status.classList.remove('hidden')
+    elements.status.dataset.tone = tone || 'info'
+    elements.status.textContent = message
+  }
+
+  function setActiveFilter(filter) {
+    state.filter = filter
+    elements.filterButtons.forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.filter === filter)
+    })
+    renderActivity()
+  }
+
+  function syncHashNavigation() {
+    const current = (window.location.hash || '#ledger').replace('#', '') || 'ledger'
+    const activeSection = ['ledger', 'live', 'account'].includes(current) ? current : 'ledger'
+
+    elements.navLinks.forEach((link) => {
+      const target = link.dataset.navLink
+      link.classList.toggle('is-active', target === activeSection)
+    })
+
+    if (current === 'new-entry') {
+      openDrawer()
+    }
+  }
+
+  function openDrawer() {
+    elements.drawer.classList.add('is-open')
+    elements.drawer.setAttribute('aria-hidden', 'false')
+    elements.formDate.value = new Date().toISOString().split('T')[0]
+    document.body.style.overflow = 'hidden'
+  }
+
+  function closeDrawer() {
+    elements.drawer.classList.remove('is-open')
+    elements.drawer.setAttribute('aria-hidden', 'true')
+    document.body.style.overflow = ''
+    elements.form.reset()
+    elements.formDate.value = new Date().toISOString().split('T')[0]
+    elements.projectedNet.textContent = 'Pending'
+    elements.projectedNet.className = 'detail-value value-pending'
+    elements.formError.hidden = true
+    elements.submit.disabled = false
+    elements.submit.textContent = 'Log entry'
+
+    if ((window.location.hash || '') === '#new-entry') {
+      history.replaceState({}, '', app.pageHref('dashboard'))
+      syncHashNavigation()
+    }
+  }
+
+  function updateProjectedNet() {
+    const lagaya = parseFloat(elements.formLagaya.value) || 0
+    const banayaValue = elements.formBanaya.value
+
+    if (banayaValue === '') {
+      elements.projectedNet.textContent = 'Pending'
+      elements.projectedNet.className = 'detail-value value-pending'
+      return
+    }
+
+    const banaya = parseFloat(banayaValue) || 0
+    const net = banaya - lagaya
+    elements.projectedNet.textContent = formatSigned(net, false)
+    elements.projectedNet.className = `detail-value ${net >= 0 ? 'value-positive' : 'value-negative'}`
+  }
+
+  function renderHeroSpark() {
+    const points = state.stats.equitySeries
+
+    if (!points.length) {
+      elements.heroSpark.innerHTML = `
+        <div class="spark-caption">
+          <span>No performance curve yet</span>
+          <span>Log your first entry</span>
+        </div>
+      `
+      return
+    }
+
+    const values = points.map((item) => item.value)
+    const min = Math.min(...values, 0)
+    const max = Math.max(...values, 0)
+    const range = Math.max(max - min, 1)
+    const width = 520
+    const height = 260
+    const path = points.map((item, index) => {
+      const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width
+      const y = height - (((item.value - min) / range) * (height - 28) + 14)
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+    }).join(' ')
+    const fillPath = `${path} L ${width} ${height} L 0 ${height} Z`
+    const startDate = app.formatDate(points[0].date)
+    const endDate = app.formatDate(points[points.length - 1].date)
+
+    elements.heroSpark.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="spark-fill" x1="0%" x2="0%" y1="0%" y2="100%">
+            <stop offset="0%" stop-color="rgba(151,169,255,0.42)"></stop>
+            <stop offset="100%" stop-color="rgba(151,169,255,0)"></stop>
+          </linearGradient>
+          <linearGradient id="spark-line" x1="0%" x2="100%" y1="0%" y2="0%">
+            <stop offset="0%" stop-color="#99f7ff"></stop>
+            <stop offset="100%" stop-color="#97a9ff"></stop>
+          </linearGradient>
+        </defs>
+        <path d="${fillPath}" fill="url(#spark-fill)"></path>
+        <path d="${path}" fill="none" stroke="url(#spark-line)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <div class="spark-caption">
+        <span>${startDate}</span>
+        <span>${endDate}</span>
+      </div>
+    `
+  }
+
+  function renderPulse() {
+    const recentDays = [...state.stats.daily].slice(-4).reverse()
+
+    if (!recentDays.length) {
+      elements.pulseList.innerHTML = `
+        <div class="empty-state">
+          <span class="material-symbols-outlined">monitoring</span>
+          <h3>Waiting for the first day</h3>
+          <p class="empty-copy">Daily pulse cards appear as soon as entries are logged.</p>
+        </div>
+      `
+      return
+    }
+
+    elements.pulseList.innerHTML = recentDays.map((day) => `
+      <div class="preview-ticker">
+        <div class="preview-list-item">
+          <div>
+            <div class="meta-label">${app.formatDate(day.date)}</div>
+            <strong>${day.totalBets} ${day.totalBets === 1 ? 'entry' : 'entries'}</strong>
+          </div>
+          <strong class="${day.netProfit >= 0 ? 'value-positive' : 'value-negative'}">${formatSigned(day.netProfit, true)}</strong>
+        </div>
+      </div>
+    `).join('')
+  }
+
+  function renderHero() {
+    const { netProfit, roi, openExposure, trackedDays, totalBets } = state.stats
+    const displayName = app.getDisplayName(state.user)
+    const greeting = totalBets > 0
+      ? `Tracking ${totalBets} entries across ${trackedDays} ${trackedDays === 1 ? 'day' : 'days'} with live sync to Supabase.`
+      : 'You are ready to start logging live entries.'
+
+    elements.welcomeName.textContent = displayName
+    elements.userName.textContent = displayName
+    elements.userEmail.textContent = state.user.email || 'No email on file'
+    elements.userBadge.textContent = getInitials(displayName)
+    elements.heroNet.textContent = formatSigned(netProfit, false)
+    elements.heroNet.className = `hero-value ${netProfit >= 0 ? 'value-positive' : 'value-negative'}`
+    elements.heroNetTone.textContent = `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}% ROI`
+    elements.heroNetTone.className = `chip ${netProfit >= 0 ? '-positive' : '-negative'}`
+    elements.heroRoi.textContent = `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%`
+    elements.heroExposure.textContent = `₹${app.formatAmount(openExposure)}`
+    elements.heroTracked.textContent = `${trackedDays} ${trackedDays === 1 ? 'day' : 'days'}`
+    elements.heroCopy.textContent = greeting
+    elements.lastUpdated.textContent = `Synced ${app.formatShortTime(new Date())}`
+    renderHeroSpark()
+  }
+
+  function renderMetrics() {
+    const { invested, returned, winRate, averageStake } = state.stats
+    elements.metricInvested.textContent = `₹${app.formatAmount(invested)}`
+    elements.metricReturned.textContent = `₹${app.formatAmount(returned)}`
+    elements.metricWinRate.textContent = `${winRate.toFixed(1)}%`
+    elements.metricAverage.textContent = `₹${app.formatAmount(averageStake)}`
+
+    const maxMoney = Math.max(invested, returned, averageStake, 1)
+    elements.barInvested.style.width = `${Math.max((invested / maxMoney) * 100, 8)}%`
+    elements.barReturned.style.width = `${Math.max((returned / maxMoney) * 100, 8)}%`
+    elements.barWinRate.style.width = `${Math.max(winRate, 8)}%`
+    elements.barAverage.style.width = `${Math.max((averageStake / maxMoney) * 100, 8)}%`
+  }
+
+  function renderActivity() {
+    const filtered = state.stats.recentBets.filter((bet) => {
+      if (state.filter === 'all') return true
+      return app.getResult(bet) === state.filter
+    })
+
+    elements.activityCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'entry' : 'entries'}`
+
+    if (!filtered.length) {
+      elements.activityList.innerHTML = `
+        <div class="empty-state">
+          <span class="material-symbols-outlined">search_off</span>
+          <h3>No entries in this filter</h3>
+          <p class="empty-copy">Switch filters or log a new position to populate the ledger.</p>
+        </div>
+      `
+      return
+    }
+
+    elements.activityList.innerHTML = filtered.map((bet, index) => {
+      const result = app.getResult(bet)
+      const net = Number(bet.net_profit || 0)
+      const label = app.escapeHtml(fallbackLabel(bet, index))
+      const settled = result !== 'pending'
+      const returnValue = bet.banaya == null ? 'Awaiting' : `₹${app.formatAmount(bet.banaya)}`
+
+      return `
+        <article class="feed-card ${result}">
+          <div class="feed-head">
+            <div>
+              <div class="eyebrow">${app.formatDate(bet.date)}</div>
+              <h3 class="feed-title">${label}</h3>
+              <p class="feed-caption">${settled ? 'Settled directly from Supabase generated columns.' : 'Pending outcome, exposure still open.'}</p>
+            </div>
+            <span class="result-pill ${result}">${result}</span>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <span class="meta-label">Lagaya</span>
+              <strong class="detail-value">₹${app.formatAmount(bet.lagaya)}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="meta-label">Banaya</span>
+              <strong class="detail-value ${settled ? '' : 'value-pending'}">${returnValue}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="meta-label">Net</span>
+              <strong class="detail-value ${result === 'pending' ? 'value-pending' : net >= 0 ? 'value-positive' : 'value-negative'}">
+                ${result === 'pending' ? 'Pending' : formatSigned(net, false)}
+              </strong>
+            </div>
+          </div>
+        </article>
+      `
+    }).join('')
+  }
+
+  function renderLive() {
+    const pending = state.stats.pending.slice().sort((left, right) => new Date(right.date) - new Date(left.date))
+    elements.liveCount.textContent = `${pending.length} ${pending.length === 1 ? 'live position' : 'live positions'}`
+
+    if (!pending.length) {
+      elements.liveList.innerHTML = `
+        <div class="empty-state">
+          <span class="material-symbols-outlined">bolt</span>
+          <h3>No live exposure</h3>
+          <p class="empty-copy">Every open entry appears here until the return value is filled in.</p>
+        </div>
+      `
+      return
+    }
+
+    elements.liveList.innerHTML = pending.map((bet, index) => `
+      <article class="feed-card pending">
+        <div class="feed-head">
+          <div>
+            <div class="eyebrow">${app.formatDate(bet.date)}</div>
+            <h3 class="feed-title">${app.escapeHtml(fallbackLabel(bet, index))}</h3>
+            <p class="feed-caption">This entry is still waiting on a final return.</p>
+          </div>
+          <span class="result-pill pending">Pending</span>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-card">
+            <span class="meta-label">Stake</span>
+            <strong class="detail-value">₹${app.formatAmount(bet.lagaya)}</strong>
+          </div>
+          <div class="detail-card">
+            <span class="meta-label">Exposure</span>
+            <strong class="detail-value value-pending">₹${app.formatAmount(bet.lagaya)}</strong>
+          </div>
+          <div class="detail-card">
+            <span class="meta-label">State</span>
+            <strong class="detail-value value-pending">Awaiting result</strong>
+          </div>
+        </div>
+      </article>
+    `).join('')
+  }
+
+  function renderAccount() {
+    const { trackedDays, totalBets, openExposure, peakDay, worstDay, streak, streakType, daily, netProfit } = state.stats
+    elements.accountDays.textContent = String(trackedDays)
+    elements.accountTotalBets.textContent = String(totalBets)
+    elements.accountExposure.textContent = `₹${app.formatAmount(openExposure)}`
+    elements.accountBestDay.textContent = peakDay ? formatSigned(peakDay.netProfit, false) : '—'
+    elements.accountBestDay.className = `summary-value ${peakDay && peakDay.netProfit >= 0 ? 'value-positive' : ''}`
+    elements.accountWorstDay.textContent = worstDay ? formatSigned(worstDay.netProfit, false) : '—'
+    elements.accountWorstDay.className = `summary-value ${worstDay && worstDay.netProfit < 0 ? 'value-negative' : ''}`
+    elements.accountStreak.textContent = streak ? `${streak} ${streakType || 'settled'}` : 'No streak'
+    elements.accountSummaryBar.style.width = `${Math.min(Math.abs(netProfit) / Math.max(state.stats.returned || 1, 1) * 100, 100).toFixed(1)}%`
+
+    elements.accountSummaryList.innerHTML = `
+      <div class="summary-row">
+        <span class="meta-label">Best day</span>
+        <strong>${peakDay ? `${app.formatDate(peakDay.date)} · ${formatSigned(peakDay.netProfit, false)}` : 'No settled days yet'}</strong>
+      </div>
+      <div class="summary-row">
+        <span class="meta-label">Worst day</span>
+        <strong>${worstDay ? `${app.formatDate(worstDay.date)} · ${formatSigned(worstDay.netProfit, false)}` : 'No settled days yet'}</strong>
+      </div>
+      <div class="summary-row">
+        <span class="meta-label">Current streak</span>
+        <strong>${streak ? `${streak} ${streakType}` : 'No streak yet'}</strong>
+      </div>
+    `
+
+    const dailyPreview = [...daily].slice(-5).reverse()
+    elements.accountDailyList.innerHTML = dailyPreview.length
+      ? dailyPreview.map((day) => `
+        <div class="breakdown-row ${day.pendingCount ? 'pending' : day.netProfit >= 0 ? 'positive' : 'negative'}">
+          <div class="preview-list-item">
+            <div>
+              <div class="meta-label">${app.formatDate(day.date)}</div>
+              <strong>${day.totalBets} ${day.totalBets === 1 ? 'entry' : 'entries'}</strong>
+            </div>
+            <strong class="${day.netProfit >= 0 ? 'value-positive' : 'value-negative'}">${formatSigned(day.netProfit, false)}</strong>
+          </div>
+        </div>
+      `).join('')
+      : `
+        <div class="empty-state">
+          <span class="material-symbols-outlined">calendar_month</span>
+          <h3>No daily breakdown yet</h3>
+          <p class="empty-copy">Once entries exist, each tracked day is summarized here.</p>
+        </div>
+      `
+  }
+
+  function renderAll() {
+    state.stats = app.computeBetStats(state.bets)
+    renderHero()
+    renderMetrics()
+    renderPulse()
+    renderActivity()
+    renderLive()
+    renderAccount()
+  }
+
+  async function refresh() {
+    state.bets = await app.fetchBets(client, state.user.id)
+    renderAll()
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+
+    const lagaya = parseFloat(elements.formLagaya.value)
+    const banayaValue = elements.formBanaya.value
+    const banaya = banayaValue === '' ? null : parseFloat(banayaValue)
+    const date = elements.formDate.value
+    const matchLabel = elements.formMatch.value.trim() || null
+
+    if (!lagaya || lagaya <= 0) {
+      elements.formError.hidden = false
+      elements.formError.textContent = 'Lagaya must be greater than zero.'
+      return
+    }
+
+    if (!date) {
+      elements.formError.hidden = false
+      elements.formError.textContent = 'Choose the ledger date for this entry.'
+      return
+    }
+
+    elements.formError.hidden = true
+    elements.submit.disabled = true
+    elements.submit.textContent = 'Logging...'
+
+    const { error } = await client.from('bets').insert({
+      user_id: state.user.id,
+      date,
+      lagaya,
+      banaya,
+      match_label: matchLabel
+    })
+
+    elements.submit.disabled = false
+    elements.submit.textContent = 'Log entry'
+
+    if (error) {
+      elements.formError.hidden = false
+      elements.formError.textContent = error.message
+      return
+    }
+
+    closeDrawer()
+    showStatus('Entry logged successfully.', 'success')
+    await refresh()
+  }
+
+  if (!client) {
+    showFatal(runtime.error)
+    return
+  }
+
+  const session = await app.requireSession(client)
+  if (!session) return
+
+  state.user = session.user
+  elements.app.classList.remove('hidden')
+  elements.formDate.value = new Date().toISOString().split('T')[0]
+
+  try {
+    await app.seedBetsIfNeeded(client, state.user.id)
+    await refresh()
+    syncHashNavigation()
+  } catch (error) {
+    showFatal(error.message || 'Unable to load the dashboard right now.')
+    return
+  }
+
+  window.addEventListener('hashchange', syncHashNavigation)
+  elements.openDrawerButtons.forEach((button) => button.addEventListener('click', openDrawer))
+  elements.closeDrawer.addEventListener('click', closeDrawer)
+  elements.cancelDrawer.addEventListener('click', closeDrawer)
+  elements.drawerScrim.addEventListener('click', closeDrawer)
+  elements.formLagaya.addEventListener('input', updateProjectedNet)
+  elements.formBanaya.addEventListener('input', updateProjectedNet)
+  elements.form.addEventListener('submit', handleSubmit)
+  elements.filterButtons.forEach((button) => {
+    button.addEventListener('click', () => setActiveFilter(button.dataset.filter))
+  })
+  elements.logoutButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      await app.signOut(client)
+    })
+  })
+
+  setActiveFilter('all')
+})

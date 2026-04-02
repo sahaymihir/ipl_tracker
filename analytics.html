@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SattaSheet | Analytics</title>
+  <meta name="description" content="Dedicated SattaSheet analytics route for equity curve, daily P&L, distribution, and live Supabase-backed breakdowns.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/sattasheet.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/api/config"></script>
+  <script defer src="/assets/app.js"></script>
+  <script defer src="/assets/analytics.js"></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">
+          <span class="material-symbols-outlined">query_stats</span>
+        </span>
+        <div class="brand-copy">
+          <div class="brand-title">SattaSheet</div>
+          <div class="brand-subtitle">Dedicated analytics route</div>
+        </div>
+      </div>
+
+      <nav class="nav-cluster topbar-links" aria-label="Primary">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard#live">Live</a>
+        <a class="is-active" href="/analytics">Analytics</a>
+        <a href="/dashboard#account">Account</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="ghost-button" href="/dashboard#new-entry">New Entry</a>
+        <button class="ghost-button" data-signout type="button">Sign out</button>
+      </div>
+    </header>
+
+    <div class="hidden" id="fatal-state"></div>
+
+    <main class="app-grid hidden" id="analytics-app">
+      <section class="hero-card hero-primary">
+        <div class="hero-layout">
+          <div class="hero-copy">
+            <div class="hero-meta">
+              <span class="chip">Analytics Route</span>
+              <span class="chip" id="analytics-roi">+0.0% ROI</span>
+              <span class="chip" id="analytics-last-sync">Synced --:--</span>
+            </div>
+            <div>
+              <div class="kicker">Portfolio Intelligence</div>
+              <h1 class="hero-title">Read the real shape of your edge, not just the latest result.</h1>
+              <p class="hero-subtitle" id="analytics-subtitle">Equity, daily P&amp;L, lagaya versus banaya flow, and result distribution are all computed from the same live bets table.</p>
+            </div>
+            <div class="hero-actions">
+              <div class="range-switch" aria-label="Analytics range">
+                <button class="range-button" data-range="7d" type="button">7 Days</button>
+                <button class="range-button is-active" data-range="all" type="button">All Time</button>
+              </div>
+              <a class="ghost-button" href="/dashboard">Back to dashboard</a>
+            </div>
+            <div class="chip-row">
+              <span class="chip">Net <strong id="analytics-net">+₹0</strong></span>
+              <span class="chip">Window <strong id="analytics-range-copy">full ledger history</strong></span>
+            </div>
+          </div>
+
+          <article class="summary-card accent profile-card">
+            <div class="split-row">
+              <div class="profile-badge" id="analytics-user-badge">OP</div>
+              <div class="profile-meta">
+                <div class="kicker">Operator</div>
+                <h3 id="analytics-user-name">Operator</h3>
+                <p id="analytics-user-email">operator@sattasheet.app</p>
+              </div>
+            </div>
+            <p class="summary-copy">The KPI stack below updates instantly when you switch between the last 7 tracked days and the full history.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="analytics-grid">
+        <article class="chart-card">
+          <div class="chart-top">
+            <div>
+              <div class="kicker">Flow Matrix</div>
+              <h2 class="chart-title">Lagaya vs banaya by day</h2>
+              <p class="section-copy">A bento-style volume comparison inspired by the SattaSheet analytics references.</p>
+            </div>
+          </div>
+          <div class="chart-wrap tall">
+            <canvas id="volume-chart"></canvas>
+          </div>
+        </article>
+
+        <div class="kpi-stack">
+          <article class="kpi-card primary">
+            <div class="kpi-icon"><span class="material-symbols-outlined">north_east</span></div>
+            <div class="meta-label">Peak Profit Day</div>
+            <div class="summary-value" id="kpi-peak-value">—</div>
+            <p class="summary-copy" id="kpi-peak-day">No peak day yet</p>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon"><span class="material-symbols-outlined">south</span></div>
+            <div class="meta-label">Worst Day</div>
+            <div class="summary-value" id="kpi-worst-value">—</div>
+            <p class="summary-copy" id="kpi-worst-day">No worst day yet</p>
+          </article>
+          <article class="kpi-card secondary">
+            <div class="kpi-icon"><span class="material-symbols-outlined">military_tech</span></div>
+            <div class="meta-label">Win Rate</div>
+            <div class="summary-value" id="kpi-win-rate">0%</div>
+            <p class="summary-copy">Settled entries finishing positive.</p>
+          </article>
+          <article class="kpi-card tertiary">
+            <div class="kpi-icon"><span class="material-symbols-outlined">bolt</span></div>
+            <div class="meta-label">Open Exposure</div>
+            <div class="summary-value" id="kpi-open-exposure">₹0</div>
+            <p class="summary-copy">Pending stake still live.</p>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon"><span class="material-symbols-outlined">calendar_month</span></div>
+            <div class="meta-label">Tracked Days</div>
+            <div class="summary-value" id="kpi-tracked-days">0</div>
+            <p class="summary-copy">Days represented in the current range.</p>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon"><span class="material-symbols-outlined">check_circle</span></div>
+            <div class="meta-label">Settled Entries</div>
+            <div class="summary-value" id="kpi-settled">0</div>
+            <p class="summary-copy">Entries with a final return and generated result.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="bento-grid">
+        <article class="chart-card compact">
+          <div class="chart-top">
+            <div>
+              <div class="kicker">Equity Curve</div>
+              <h2 class="chart-title">Cumulative net trajectory</h2>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="equity-chart"></canvas>
+          </div>
+        </article>
+
+        <article class="chart-card compact">
+          <div class="chart-top">
+            <div>
+              <div class="kicker">Distribution</div>
+              <h2 class="chart-title">Wins, losses, pending</h2>
+            </div>
+            <div class="chart-value" id="distribution-total">0</div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="distribution-chart"></canvas>
+          </div>
+          <div class="chart-legend">
+            <div class="chart-legend-item">
+              <span style="background:#7af1d6;"></span>
+              <strong>Wins</strong>
+              <span id="legend-wins">0</span>
+            </div>
+            <div class="chart-legend-item">
+              <span style="background:#ff7b95;"></span>
+              <strong>Losses</strong>
+              <span id="legend-losses">0</span>
+            </div>
+            <div class="chart-legend-item">
+              <span style="background:#ffcc73;"></span>
+              <strong>Pending</strong>
+              <span id="legend-pending">0</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <div class="kicker">Daily P&amp;L</div>
+            <h2 class="section-title">Profit and loss cadence</h2>
+            <p class="section-copy">Daily net movement shown independently from the volume chart so up/down swings stay easy to scan.</p>
+          </div>
+        </div>
+        <article class="chart-card compact">
+          <div class="chart-wrap">
+            <canvas id="pnl-chart"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div>
+            <div class="kicker">Daily Breakdown</div>
+            <h2 class="section-title">Per-day operating detail</h2>
+            <p class="section-copy">Every row below is computed from the current range and stays in sync with the charts above.</p>
+          </div>
+        </div>
+        <div class="breakdown-list" id="breakdown-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="fab-desktop">
+    <a class="fab-button" href="/dashboard#new-entry" aria-label="Add new entry">
+      <span class="material-symbols-outlined">add</span>
+    </a>
+  </div>
+
+  <div class="fab-mobile">
+    <a class="fab-button" href="/dashboard#new-entry" aria-label="Add new entry">
+      <span class="material-symbols-outlined">add</span>
+    </a>
+  </div>
+
+  <nav class="bottom-nav" aria-label="Bottom navigation">
+    <a class="bottom-nav-link" href="/dashboard">
+      <span class="material-symbols-outlined">view_timeline</span>
+      <span>Ledger</span>
+    </a>
+    <a class="bottom-nav-link" href="/dashboard#live">
+      <span class="material-symbols-outlined">bolt</span>
+      <span>Live</span>
+    </a>
+    <a class="bottom-nav-link is-active" href="/analytics">
+      <span class="material-symbols-outlined">query_stats</span>
+      <span>Analytics</span>
+    </a>
+    <a class="bottom-nav-link" href="/dashboard#account">
+      <span class="material-symbols-outlined">person</span>
+      <span>Account</span>
+    </a>
+  </nav>
+</body>
+</html>

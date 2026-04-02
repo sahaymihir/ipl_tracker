@@ -1,15 +1,26 @@
-# IPL LEDGER
+# SattaSheet
 
-A high-stakes IPL betting ledger dashboard with dark theme, real-time stats, charts, Supabase backend, and Vercel runtime config for browser-safe env injection.
+SattaSheet is a Vercel + Supabase betting ledger with a fully redesigned dark UI, live auth flows, a real operational dashboard, and a dedicated analytics route.
+
+## Stack
+- Frontend: HTML, custom CSS, vanilla JavaScript
+- Auth + Database: Supabase
+- Runtime config: Vercel function at `/api/config`
+- Charts: Chart.js
+- Deploy: Vercel
+
+## Routes
+- `/` -> auth terminal with sign in / create account panels
+- `/dashboard` -> live ledger, open positions, account summary, add-entry drawer
+- `/analytics` -> equity curve, daily P&L, flow chart, result distribution
 
 ## Setup
 
-### 1. Create Supabase Project
-- Go to [supabase.com](https://supabase.com) and create a new project
-- Copy your **Project URL** and **anon public key** from Settings → API
+### 1. Create the Supabase project
+Copy your project URL and anon public key from Supabase Settings -> API.
 
-### 2. Run Database Migration
-Open the **SQL Editor** in your Supabase dashboard and run:
+### 2. Create the `bets` table
+Run this in the Supabase SQL editor:
 
 ```sql
 create table bets (
@@ -36,14 +47,8 @@ alter table bets enable row level security;
 create policy "Users see own bets" on bets for all using (auth.uid() = user_id);
 ```
 
-### 3. Create Your User Account
-- Default path: open the app and use the new **Create account** option on the auth screen
-- Alternate path: create a user manually in **Authentication** → **Users** in Supabase
-- If Supabase email confirmation is enabled, verify the account from email before signing in
-
-### 4. Configure Environment Variables
-1. Copy `.env.example` to `.env.local` or `.env` for local development
-2. Set these values:
+### 3. Configure env vars
+Copy `.env.example` to `.env.local` or `.env`, then set:
 
 ```env
 SUPABASE_URL=your-project-url
@@ -51,49 +56,50 @@ SUPABASE_ANON_KEY=your-public-anon-key
 APP_URL=https://your-production-domain.vercel.app
 ```
 
-Use the Supabase **anon** key only. Do not put your service role key in browser config.
-Set `APP_URL` to the real deployed frontend URL you want email verification links to open.
+`APP_URL` should be the real deployed frontend URL you want email verification to use.
 
-### 5. Configure Supabase Auth Redirects
-In Supabase, go to **Authentication** → **URL Configuration** and set:
-- **Site URL** to your production app URL, for example `https://your-production-domain.vercel.app`
-- **Redirect URLs** to include both your production URL and any preview/local URLs you intentionally use
+### 4. Configure Supabase Auth URLs
+In Supabase Authentication -> URL Configuration:
+- Set `Site URL` to your production app URL
+- Add your production URL and any intentional local/preview URLs to `Redirect URLs`
 
-If the deployed URL is not allowlisted there, Supabase can fall back to an older localhost site URL during email verification.
+If you want signup emails to be sent, turn on `Confirm Email` in Supabase Auth settings.
 
-### 6. Run Locally
-1. Install the Vercel CLI if needed: `npm i -g vercel`
-2. Start the app with `vercel dev`
+### 5. Run locally
+Use Vercel so `/api/config` can inject runtime config:
 
-This project reads `process.env` from the Vercel runtime through `/api/config`, so opening the HTML files directly will not load env vars.
+```bash
+npm i -g vercel
+vercel dev
+```
 
-### 7. Deploy to Vercel
-1. Push this repo to GitHub
-2. Go to [vercel.com](https://vercel.com) and import the repository
-3. Add `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `APP_URL` in Project Settings → Environment Variables
-4. Deploy
+### 6. Deploy
+In Vercel Project Settings -> Environment Variables, add:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `APP_URL`
 
-### 8. Use It
-1. Visit your Vercel URL → redirects to login
-2. Enter your Supabase credentials → authenticate
-3. Dashboard auto-seeds your historical IPL data on first load
-4. Use the `+` action to log new bets
+Then redeploy.
 
-## Tech Stack
-- **Frontend**: HTML, Tailwind CSS (CDN), Vanilla JS
-- **Backend**: Supabase (Auth + PostgreSQL)
-- **Runtime Config**: Vercel Function at `/api/config`
-- **Charts**: Chart.js (CDN)
-- **Fonts**: Bebas Neue, Sora, JetBrains Mono
-- **Icons**: Material Symbols Outlined
-- **Deploy**: Vercel (static pages + function)
+## Functionality
+- Signup stores `full_name` in Supabase auth user metadata
+- Verification resend uses the production-safe redirect URL
+- Dashboard seeds starter bets only when the signed-in user has zero rows
+- Add-entry drawer inserts real rows into `bets`
+- Analytics charts all read from live Supabase data, not static mocks
 
 ## Project Structure
-```
-├── .env.example        ← Example env vars for local/Vercel setup
-├── api/config.js       ← Exposes browser-safe runtime config from Vercel env
-├── index.html          ← Login screen
-├── dashboard.html      ← Main dashboard (fully wired)
-├── vercel.json         ← Vercel routing config
-└── README.md           ← This file
+```text
+├── .env.example
+├── api/config.js
+├── assets/app.js
+├── assets/auth.js
+├── assets/dashboard.js
+├── assets/analytics.js
+├── assets/sattasheet.css
+├── index.html
+├── dashboard.html
+├── analytics.html
+├── vercel.json
+└── README.md
 ```
