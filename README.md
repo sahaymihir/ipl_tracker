@@ -37,9 +37,9 @@ create policy "Users see own bets" on bets for all using (auth.uid() = user_id);
 ```
 
 ### 3. Create Your User Account
-- Go to **Authentication** → **Users** in Supabase dashboard
-- Click **Add User** → **Create New User**
-- Enter your email and password (this is a single-user app, no sign-up flow)
+- Default path: open the app and use the new **Create account** option on the auth screen
+- Alternate path: create a user manually in **Authentication** → **Users** in Supabase
+- If Supabase email confirmation is enabled, verify the account from email before signing in
 
 ### 4. Configure Environment Variables
 1. Copy `.env.example` to `.env.local` or `.env` for local development
@@ -68,7 +68,7 @@ This project reads `process.env` from the Vercel runtime through `/api/config`, 
 1. Visit your Vercel URL → redirects to login
 2. Enter your Supabase credentials → authenticate
 3. Dashboard auto-seeds your historical IPL data on first load
-4. Use the `+` FAB to log new bets
+4. Use the `+` action to log new bets
 
 ## Tech Stack
 - **Frontend**: HTML, Tailwind CSS (CDN), Vanilla JS

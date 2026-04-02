@@ -1,199 +1,598 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>IPL LEDGER | Authenticate</title>
-<meta name="description" content="IPL Ledger - Login to your high-stakes betting dashboard"/>
+<title>IPL Ledger | Private Access</title>
+<meta name="description" content="IPL Ledger - A refined private dashboard for IPL positions, results, and bankroll tracking."/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/api/config"></script>
-<script>
-    tailwind.config = {
-        darkMode: "class",
-        theme: {
-            extend: {
-                colors: {
-                    "on-surface-variant": "#e3bfb1",
-                    "surface-container-high": "#292932",
-                    "on-primary-container": "#541b00",
-                    "background": "#13131b",
-                    "primary-fixed-dim": "#ffb597",
-                    "on-secondary": "#003548",
-                    "outline-variant": "#5a4137",
-                    "tertiary": "#00e475",
-                    "primary": "#ffb597",
-                    "secondary-fixed-dim": "#75d1ff",
-                    "on-secondary-fixed": "#001e2b",
-                    "on-background": "#e4e1ed",
-                    "error": "#ffb4ab",
-                    "inverse-surface": "#e4e1ed",
-                    "tertiary-fixed-dim": "#00e475",
-                    "tertiary-container": "#00ac57",
-                    "surface-container-lowest": "#0d0d16",
-                    "surface-container-low": "#1b1b23",
-                    "on-tertiary": "#003918",
-                    "surface-dim": "#13131b",
-                    "inverse-on-surface": "#302f39",
-                    "on-surface": "#e4e1ed",
-                    "surface-container-highest": "#34343d",
-                    "on-secondary-fixed-variant": "#004d67",
-                    "surface-variant": "#34343d",
-                    "secondary-container": "#00c1fd",
-                    "on-tertiary-fixed": "#00210b",
-                    "primary-fixed": "#ffdbcd",
-                    "outline": "#aa8a7d",
-                    "surface-tint": "#ffb597",
-                    "on-error-container": "#ffdad6",
-                    "on-primary": "#591d00",
-                    "error-container": "#93000a",
-                    "on-tertiary-fixed-variant": "#005226",
-                    "secondary": "#8fd8ff",
-                    "on-error": "#690005",
-                    "surface-container": "#1f1f28",
-                    "inverse-primary": "#a53d00",
-                    "primary-container": "#ff6200",
-                    "surface-bright": "#393842",
-                    "surface": "#13131b",
-                    "on-primary-fixed": "#360f00",
-                    "on-tertiary-container": "#003617",
-                    "secondary-fixed": "#c2e8ff",
-                    "on-secondary-container": "#004b65",
-                    "on-primary-fixed-variant": "#7e2c00",
-                    "tertiary-fixed": "#62ff96"
-                },
-                fontFamily: {
-                    "headline": ["Bebas Neue"],
-                    "body": ["Sora"],
-                    "mono": ["JetBrains Mono"]
-                },
-                borderRadius: {
-                    "DEFAULT": "0px",
-                    "lg": "0px",
-                    "xl": "0px",
-                    "full": "9999px"
-                },
-            },
-        },
-    }
-</script>
 <style>
-    .cricket-seam-pattern {
-        background-image: repeating-linear-gradient(45deg, rgba(255, 98, 0, 0.05) 0px, rgba(255, 98, 0, 0.05) 1px, transparent 1px, transparent 10px);
+  :root {
+    --bg: #08111d;
+    --bg-deep: #0e1827;
+    --panel: rgba(16, 24, 39, 0.72);
+    --panel-soft: rgba(255, 255, 255, 0.04);
+    --line: rgba(202, 213, 226, 0.14);
+    --line-strong: rgba(202, 213, 226, 0.22);
+    --text: #eef2f8;
+    --muted: #9aa8ba;
+    --accent: #9bb4ff;
+    --accent-soft: rgba(155, 180, 255, 0.16);
+    --teal: #6fc5b8;
+    --rose: #d79aa2;
+    --gold: #d2b07d;
+    --shadow: 0 28px 80px rgba(1, 8, 20, 0.38);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Manrope", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 12% 20%, rgba(155, 180, 255, 0.16), transparent 30%),
+      radial-gradient(circle at 86% 14%, rgba(111, 197, 184, 0.13), transparent 24%),
+      radial-gradient(circle at 62% 82%, rgba(210, 176, 125, 0.12), transparent 26%),
+      linear-gradient(135deg, var(--bg), var(--bg-deep));
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(155, 180, 255, 0.28);
+    color: #ffffff;
+  }
+
+  .font-display { font-family: "Instrument Serif", serif; }
+  .font-mono-display { font-family: "IBM Plex Mono", monospace; }
+
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 420, "GRAD" 0, "opsz" 24;
+  }
+
+  .glass-panel {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+      var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(22px);
+    border-radius: 32px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.6rem 0.95rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .feature-card,
+  .signal-card {
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.035);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .feature-card {
+    padding: 1rem;
+  }
+
+  .signal-card {
+    padding: 1.15rem;
+  }
+
+  .auth-toggle {
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 0.9rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: all 180ms ease;
+  }
+
+  .auth-toggle.is-active {
+    border-color: var(--line-strong);
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .field-shell {
+    border-radius: 22px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.035);
+    padding: 0.95rem 1rem;
+    transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+  }
+
+  .field-shell:focus-within {
+    border-color: rgba(155, 180, 255, 0.42);
+    background: rgba(255, 255, 255, 0.055);
+    transform: translateY(-1px);
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .field-shell input {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0;
+    outline: none;
+    box-shadow: none;
+  }
+
+  .field-shell input::placeholder {
+    color: rgba(154, 168, 186, 0.55);
+  }
+
+  .status-card {
+    border-radius: 22px;
+    border: 1px solid var(--line);
+    padding: 0.95rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .status-card[data-tone="error"] {
+    border-color: rgba(215, 154, 162, 0.35);
+    background: rgba(215, 154, 162, 0.11);
+    color: #f5dce0;
+  }
+
+  .status-card[data-tone="success"] {
+    border-color: rgba(111, 197, 184, 0.35);
+    background: rgba(111, 197, 184, 0.11);
+    color: #d5f1eb;
+  }
+
+  .primary-button {
+    width: 100%;
+    border: 0;
+    border-radius: 999px;
+    padding: 1rem 1.35rem;
+    background: linear-gradient(135deg, rgba(155, 180, 255, 0.95), rgba(210, 176, 125, 0.92));
+    color: #091220;
+    font-size: 0.86rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: 0 16px 32px rgba(155, 180, 255, 0.2);
+    transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  }
+
+  .primary-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 22px 38px rgba(155, 180, 255, 0.24);
+  }
+
+  .primary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .insight-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(circle at top right, rgba(155, 180, 255, 0.16), transparent 34%),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    padding: 1.4rem;
+  }
+
+  .insight-panel::after {
+    content: "";
+    position: absolute;
+    inset: auto -8% -42% 44%;
+    height: 180px;
+    border-radius: 999px;
+    background: rgba(111, 197, 184, 0.14);
+    filter: blur(44px);
+  }
+
+  .sparkline {
+    height: 76px;
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
+      radial-gradient(circle at 12% 30%, rgba(155, 180, 255, 0.18), transparent 30%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sparkline svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(40px);
+    opacity: 0.45;
+  }
+
+  .orb-a {
+    width: 220px;
+    height: 220px;
+    top: 4%;
+    left: -3%;
+    background: rgba(155, 180, 255, 0.18);
+  }
+
+  .orb-b {
+    width: 260px;
+    height: 260px;
+    right: -6%;
+    top: 24%;
+    background: rgba(111, 197, 184, 0.13);
+  }
+
+  .orb-c {
+    width: 300px;
+    height: 300px;
+    left: 36%;
+    bottom: -12%;
+    background: rgba(210, 176, 125, 0.11);
+  }
+
+  .reveal {
+    animation: rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .stagger {
+    animation-delay: 110ms;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(28px);
     }
-    .material-symbols-outlined {
-        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
-    input:focus {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(24px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in-up {
-        animation: fadeInUp 0.6s ease-out forwards;
-    }
-    @keyframes pulse-glow {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 98, 0, 0); }
-        50% { box-shadow: 0 0 32px 4px rgba(255, 98, 0, 0.15); }
-    }
-    .pulse-glow {
-        animation: pulse-glow 3s ease-in-out infinite;
-    }
+  }
 </style>
 </head>
-<body class="bg-background text-on-background font-body selection:bg-primary-container selection:text-on-primary-container cricket-seam-pattern min-h-screen flex items-center justify-center overflow-x-hidden">
-
-<div class="w-full max-w-sm mx-auto px-6 animate-fade-in-up">
-    <!-- Logo -->
-    <div class="flex flex-col items-center mb-12">
-        <span class="material-symbols-outlined text-[#FF6200] text-5xl mb-4">analytics</span>
-        <h1 class="font-['Bebas_Neue'] tracking-[0.08em] uppercase text-5xl font-black text-[#FF6200]">IPL LEDGER</h1>
-        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-on-surface-variant/40 mt-2">RESTRICTED ACCESS</p>
-    </div>
-
-    <!-- Login Card -->
-    <div class="bg-surface-container-low border border-outline-variant/15 p-6 pulse-glow">
-        <form id="login-form" class="space-y-6">
-            <div class="space-y-1">
-                <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Email</label>
-                <input id="email-input" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-body focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" placeholder="your@email.com" type="email" required/>
-            </div>
-            <div class="space-y-1">
-                <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Password</label>
-                <input id="password-input" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-mono focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" placeholder="••••••••" type="password" required/>
-            </div>
-            <div id="error-message" class="hidden text-error text-[11px] font-semibold text-center py-2 bg-error-container/10 border border-error/20"></div>
-            <button id="submit-btn" class="w-full bg-primary-container text-black font-headline text-2xl py-5 active:scale-[0.98] transition-transform" type="submit">AUTHENTICATE</button>
-        </form>
-    </div>
-
-    <p class="text-[9px] text-on-surface-variant/20 text-center mt-8 uppercase tracking-widest">Encrypted • Single-User • Supabase Auth</p>
+<body>
+<div class="pointer-events-none fixed inset-0 overflow-hidden">
+  <div class="orb orb-a"></div>
+  <div class="orb orb-b"></div>
+  <div class="orb orb-c"></div>
 </div>
+
+<main class="relative min-h-screen px-5 py-8 md:px-8 md:py-10">
+  <div class="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <section class="glass-panel reveal p-7 md:p-10">
+      <div class="chip">
+        <span class="material-symbols-outlined text-[18px]">shield_locked</span>
+        Private IPL capital journal
+      </div>
+
+      <h1 class="font-display mt-6 max-w-3xl text-5xl leading-[0.92] md:text-7xl">
+        Track every stake with a calmer, sharper lens.
+      </h1>
+      <p class="mt-5 max-w-2xl text-sm leading-7 text-[var(--muted)] md:text-base">
+        A more measured control room for your IPL book. Cleaner typography, quieter color, and a focused place to review wins, losses, and live exposure without noise.
+      </p>
+
+      <div class="mt-8 grid gap-3 sm:grid-cols-3">
+        <article class="feature-card">
+          <p class="eyebrow">Secure access</p>
+          <h2 class="mt-3 text-lg font-semibold">One account, one ledger, no clutter.</h2>
+        </article>
+        <article class="feature-card">
+          <p class="eyebrow">Live clarity</p>
+          <h2 class="mt-3 text-lg font-semibold">Open bets stay visible without overwhelming the rest.</h2>
+        </article>
+        <article class="feature-card">
+          <p class="eyebrow">Quiet analytics</p>
+          <h2 class="mt-3 text-lg font-semibold">Performance views that feel premium instead of loud.</h2>
+        </article>
+      </div>
+
+      <div class="insight-panel mt-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="eyebrow">Ledger atmosphere</p>
+            <h2 class="font-display mt-2 text-3xl">Muted, deliberate, and personal.</h2>
+          </div>
+          <span class="chip border-[var(--line-strong)] bg-[var(--accent-soft)] text-[var(--text)]">Season view</span>
+        </div>
+
+        <div class="mt-6 grid gap-3 sm:grid-cols-3">
+          <div class="signal-card">
+            <p class="eyebrow">Capital flow</p>
+            <p class="font-mono-display mt-3 text-2xl">₹ 18.6K</p>
+            <p class="mt-2 text-sm text-[var(--muted)]">High-signal numbers with room to breathe.</p>
+          </div>
+          <div class="signal-card">
+            <p class="eyebrow">Win rhythm</p>
+            <p class="font-mono-display mt-3 text-2xl">63.4%</p>
+            <p class="mt-2 text-sm text-[var(--muted)]">A cleaner read on momentum across the slate.</p>
+          </div>
+          <div class="signal-card">
+            <p class="eyebrow">Live exposure</p>
+            <p class="font-mono-display mt-3 text-2xl">03</p>
+            <p class="mt-2 text-sm text-[var(--muted)]">Open positions stay present, not distracting.</p>
+          </div>
+        </div>
+
+        <div class="sparkline mt-6">
+          <svg preserveAspectRatio="none" viewBox="0 0 300 80">
+            <defs>
+              <linearGradient id="curveGlow" x1="0%" x2="100%" y1="0%" y2="0%">
+                <stop offset="0%" stop-color="rgba(155,180,255,0.2)"></stop>
+                <stop offset="100%" stop-color="rgba(111,197,184,0.85)"></stop>
+              </linearGradient>
+            </defs>
+            <path d="M0 60 C 36 48, 56 14, 88 20 S 148 64, 174 48 228 16, 300 24" fill="none" stroke="url(#curveGlow)" stroke-linecap="round" stroke-width="3"></path>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="glass-panel reveal stagger p-6 md:p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="eyebrow">Secure entry</p>
+          <h2 class="font-display mt-2 text-4xl" id="auth-title">Welcome back</h2>
+          <p class="mt-3 max-w-md text-sm leading-7 text-[var(--muted)]" id="auth-subtitle">
+            Sign in to reach your private ledger and performance dashboard.
+          </p>
+        </div>
+        <span class="chip">Supabase</span>
+      </div>
+
+      <div class="mt-6 grid grid-cols-2 gap-2 rounded-full border border-[var(--line)] bg-white/[0.04] p-1">
+        <button class="auth-toggle is-active" data-auth-mode="signin" type="button">Sign in</button>
+        <button class="auth-toggle" data-auth-mode="signup" type="button">Create account</button>
+      </div>
+
+      <form class="mt-6 space-y-4" id="login-form">
+        <label class="field-shell block">
+          <span class="field-label">Email</span>
+          <input autocomplete="email" id="email-input" placeholder="your@email.com" required type="email"/>
+        </label>
+
+        <label class="field-shell block">
+          <span class="field-label">Password</span>
+          <input autocomplete="current-password" id="password-input" placeholder="Enter your password" required type="password"/>
+        </label>
+
+        <label class="field-shell hidden" id="confirm-field">
+          <span class="field-label">Confirm password</span>
+          <input autocomplete="new-password" id="confirm-password-input" placeholder="Repeat your password" type="password"/>
+        </label>
+
+        <div class="status-card hidden" data-tone="error" id="status-message"></div>
+
+        <button class="primary-button" id="submit-btn" type="submit">
+          <span id="submit-btn-label">Sign in</span>
+        </button>
+
+        <p class="text-center text-sm leading-7 text-[var(--muted)]" id="auth-footnote">
+          Existing account? Sign in directly. New here? Switch to create account and Supabase will register your login.
+        </p>
+      </form>
+
+      <div class="mt-6 grid gap-3 sm:grid-cols-2">
+        <article class="signal-card">
+          <p class="eyebrow">Session rules</p>
+          <p class="mt-3 text-sm leading-7 text-[var(--muted)]">Auth is tied to Supabase, so passwords and account creation stay in one place.</p>
+        </article>
+        <article class="signal-card">
+          <p class="eyebrow">Verification note</p>
+          <p class="mt-3 text-sm leading-7 text-[var(--muted)]">If email confirmations are enabled in Supabase, new users may need to verify before signing in.</p>
+        </article>
+      </div>
+    </section>
+  </div>
+</main>
 
 <script>
 const form = document.getElementById('login-form')
 const emailInput = document.getElementById('email-input')
 const passwordInput = document.getElementById('password-input')
-const errorMsg = document.getElementById('error-message')
+const confirmField = document.getElementById('confirm-field')
+const confirmPasswordInput = document.getElementById('confirm-password-input')
+const statusMessage = document.getElementById('status-message')
 const submitBtn = document.getElementById('submit-btn')
+const submitBtnLabel = document.getElementById('submit-btn-label')
+const authTitle = document.getElementById('auth-title')
+const authSubtitle = document.getElementById('auth-subtitle')
+const authFootnote = document.getElementById('auth-footnote')
+const modeButtons = Array.from(document.querySelectorAll('[data-auth-mode]'))
+
+let currentMode = 'signin'
 
 function getRuntimeConfig() {
-    const config = window.__APP_CONFIG__ || {}
+  const config = window.__APP_CONFIG__ || {}
 
-    if (!config.supabaseUrl || !config.supabaseAnonKey) {
-        return {
-            error: 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy or restart `vercel dev`.'
-        }
+  if (!config.supabaseUrl || !config.supabaseAnonKey) {
+    return {
+      error: 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy or restart `vercel dev`.'
     }
+  }
 
-    return { config }
+  return { config }
+}
+
+function setStatus(message, tone) {
+  if (!message) {
+    statusMessage.textContent = ''
+    statusMessage.classList.add('hidden')
+    return
+  }
+
+  statusMessage.dataset.tone = tone || 'error'
+  statusMessage.textContent = message
+  statusMessage.classList.remove('hidden')
+}
+
+function setPending(pending, label) {
+  submitBtn.disabled = pending
+  submitBtnLabel.textContent = pending ? label : (currentMode === 'signin' ? 'Sign in' : 'Create account')
+}
+
+function setMode(mode) {
+  currentMode = mode
+  const isSignup = mode === 'signup'
+
+  modeButtons.forEach((button) => {
+    button.classList.toggle('is-active', button.dataset.authMode === mode)
+  })
+
+  confirmField.classList.toggle('hidden', !isSignup)
+  confirmPasswordInput.required = isSignup
+  confirmPasswordInput.value = ''
+  passwordInput.autocomplete = isSignup ? 'new-password' : 'current-password'
+
+  authTitle.textContent = isSignup ? 'Create your account' : 'Welcome back'
+  authSubtitle.textContent = isSignup
+    ? 'Start your private ledger here. Once the account exists, the same credentials take you straight into the dashboard.'
+    : 'Sign in to reach your private ledger and performance dashboard.'
+  authFootnote.textContent = isSignup
+    ? 'If Supabase email confirmation is enabled, we will create the account and ask you to verify your email before signing in.'
+    : 'Existing account? Sign in directly. New here? Switch to create account and Supabase will register your login.'
+  submitBtnLabel.textContent = isSignup ? 'Create account' : 'Sign in'
+  setStatus('', 'error')
+}
+
+function disableAuthSurface(message) {
+  ;[emailInput, passwordInput, confirmPasswordInput, submitBtn, ...modeButtons].forEach((node) => {
+    node.disabled = true
+  })
+  setStatus(message, 'error')
+  submitBtnLabel.textContent = 'Config required'
+}
+
+async function redirectIfSessionExists(sb) {
+  const { data: { session } } = await sb.auth.getSession()
+  if (session) window.location.href = 'dashboard.html'
 }
 
 const runtime = getRuntimeConfig()
 const sb = runtime.config
-    ? window.supabase.createClient(runtime.config.supabaseUrl, runtime.config.supabaseAnonKey)
-    : null
+  ? window.supabase.createClient(runtime.config.supabaseUrl, runtime.config.supabaseAnonKey)
+  : null
+
+modeButtons.forEach((button) => {
+  button.addEventListener('click', () => setMode(button.dataset.authMode))
+})
+
+setMode(currentMode)
 
 if (!sb) {
-    errorMsg.textContent = runtime.error
-    errorMsg.classList.remove('hidden')
-    submitBtn.textContent = 'CONFIG REQUIRED'
-    submitBtn.disabled = true
-    emailInput.disabled = true
-    passwordInput.disabled = true
+  disableAuthSurface(runtime.error)
 } else {
-    // Auto-redirect if already logged in
-    ;(async () => {
-        const { data: { session } } = await sb.auth.getSession()
-        if (session) window.location.href = 'dashboard.html'
-    })()
+  redirectIfSessionExists(sb)
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault()
-        errorMsg.classList.add('hidden')
-        submitBtn.textContent = 'AUTHENTICATING...'
-        submitBtn.disabled = true
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    setStatus('', 'error')
 
-        const { error } = await sb.auth.signInWithPassword({
-            email: emailInput.value.trim(),
-            password: passwordInput.value
-        })
+    const email = emailInput.value.trim()
+    const password = passwordInput.value
+    const isSignup = currentMode === 'signup'
 
-        if (error) {
-            errorMsg.textContent = error.message
-            errorMsg.classList.remove('hidden')
-            submitBtn.textContent = 'AUTHENTICATE'
-            submitBtn.disabled = false
-            return
+    if (isSignup) {
+      if (password.length < 6) {
+        setStatus('Use at least 6 characters for the new password.', 'error')
+        return
+      }
+
+      if (password !== confirmPasswordInput.value) {
+        setStatus('Passwords do not match yet. Please re-enter them.', 'error')
+        return
+      }
+    }
+
+    setPending(true, isSignup ? 'Creating account...' : 'Signing in...')
+
+    if (isSignup) {
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
+      })
 
+      if (error) {
+        setStatus(error.message, 'error')
+        setPending(false)
+        return
+      }
+
+      if (data.session) {
         window.location.href = 'dashboard.html'
+        return
+      }
+
+      setMode('signin')
+      setStatus('Account created. If email confirmation is enabled in Supabase, verify your inbox and then sign in.', 'success')
+      setPending(false)
+      return
+    }
+
+    const { error } = await sb.auth.signInWithPassword({
+      email,
+      password
     })
+
+    if (error) {
+      setStatus(error.message, 'error')
+      setPending(false)
+      return
+    }
+
+    window.location.href = 'dashboard.html'
+  })
 }
 </script>
 </body>
