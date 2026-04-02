@@ -281,9 +281,20 @@
   }
 
   function getDisplayName(user) {
-    const fullName = user && user.user_metadata && user.user_metadata.full_name
-    if (fullName && String(fullName).trim()) {
-      return String(fullName).trim()
+    const metadata = (user && (user.user_metadata || user.raw_user_meta_data)) || {}
+    const candidates = [
+      metadata.full_name,
+      metadata.display_name,
+      metadata.name,
+      user && user.full_name,
+      user && user.display_name,
+      user && user.name
+    ]
+
+    for (const candidate of candidates) {
+      if (candidate && String(candidate).trim()) {
+        return String(candidate).trim()
+      }
     }
     if (user && user.email) {
       return user.email.split('@')[0]
