@@ -91,13 +91,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `Settled ledger #${index + 1}`
   }
 
-  function showFatal(message) {
+  function showFatal(error) {
+    const setupState = app.isMissingBetsTableError(error)
+      ? app.getBetsSetupState('dashboard')
+      : null
+    const message = app.getErrorMessage(error, 'Unable to load the dashboard right now.')
+
+    elements.app.classList.add('hidden')
     elements.fatal.classList.remove('hidden')
     elements.fatal.innerHTML = `
       <div class="empty-state">
-        <span class="material-symbols-outlined">error</span>
-        <h3>Configuration blocked</h3>
-        <p class="empty-copy">${app.escapeHtml(message)}</p>
+        <span class="material-symbols-outlined">${setupState ? setupState.icon : 'error'}</span>
+        <h3>${app.escapeHtml(setupState ? setupState.title : 'Dashboard unavailable')}</h3>
+        <p class="empty-copy">${app.escapeHtml(setupState ? setupState.message : message)}</p>
+        ${setupState ? `<p class="empty-copy">${app.escapeHtml(setupState.action)}</p>` : ''}
       </div>
     `
   }
@@ -113,6 +120,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.status.classList.remove('hidden')
     elements.status.dataset.tone = tone || 'info'
     elements.status.textContent = message
+  }
+
+  function bindSignOutButtons() {
+    elements.logoutButtons.forEach((button) => {
+      button.addEventListener('click', async () => {
+        button.disabled = true
+        await app.signOut(client)
+      })
+    })
   }
 
   function setActiveFilter(filter) {
@@ -494,7 +510,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (error) {
       elements.formError.hidden = false
-      elements.formError.textContent = error.message
+      elements.formError.textContent = app.isMissingBetsTableError(error)
+        ? app.getBetsSetupInlineMessage()
+        : app.getErrorMessage(error, 'Unable to save the bet right now.')
       return
     }
 
@@ -512,15 +530,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!session) return
 
   state.user = session.user
-  elements.app.classList.remove('hidden')
   elements.formDate.value = new Date().toISOString().split('T')[0]
+  bindSignOutButtons()
 
   try {
-    await app.seedBetsIfNeeded(client, state.user.id)
     await refresh()
+    elements.fatal.classList.add('hidden')
+    elements.app.classList.remove('hidden')
     syncHashNavigation()
   } catch (error) {
-    showFatal(error.message || 'Unable to load the dashboard right now.')
+    showFatal(error)
     return
   }
 
@@ -534,11 +553,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   elements.form.addEventListener('submit', handleSubmit)
   elements.filterButtons.forEach((button) => {
     button.addEventListener('click', () => setActiveFilter(button.dataset.filter))
-  })
-  elements.logoutButtons.forEach((button) => {
-    button.addEventListener('click', async () => {
-      await app.signOut(client)
-    })
   })
 
   setActiveFilter('all')

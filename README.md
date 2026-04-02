@@ -20,32 +20,8 @@ SattaSheet is a Vercel + Supabase betting ledger with a fully redesigned dark UI
 Copy your project URL and anon public key from Supabase Settings -> API.
 
 ### 2. Create the `bets` table
-Run this in the Supabase SQL editor:
-
-```sql
-create table bets (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
-  date date not null,
-  lagaya numeric not null,
-  banaya numeric,
-  net_profit numeric generated always as (coalesce(banaya, 0) - lagaya) stored,
-  result text generated always as (
-    case
-      when banaya is null then 'pending'
-      when (coalesce(banaya, 0) - lagaya) > 0 then 'win'
-      when (coalesce(banaya, 0) - lagaya) = 0 then 'loss'
-      else 'loss'
-    end
-  ) stored,
-  match_label text,
-  created_at timestamptz default now()
-);
-
-alter table bets enable row level security;
-
-create policy "Users see own bets" on bets for all using (auth.uid() = user_id);
-```
+Run the SQL in `supabase/setup.sql` in the Supabase SQL editor.
+The app now treats `public.bets` as a required dependency and will show a setup-specific error until that table exists.
 
 ### 3. Configure env vars
 Copy `.env.example` to `.env.local` or `.env`, then set:
@@ -86,7 +62,7 @@ Then redeploy.
 ## Functionality
 - Signup stores `full_name` in Supabase auth user metadata
 - Verification resend uses the production-safe redirect URL
-- Dashboard seeds starter bets only when the signed-in user has zero rows
+- Dashboard and analytics expect a real `public.bets` table and never auto-seed demo rows
 - Add-entry drawer inserts real rows into `bets`
 - Analytics charts all read from live Supabase data, not static mocks
 
@@ -102,6 +78,7 @@ Then redeploy.
 ├── index.html
 ├── dashboard.html
 ├── analytics.html
+├── supabase/setup.sql
 ├── vercel.json
 └── README.md
 ```

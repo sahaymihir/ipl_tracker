@@ -1,33 +1,6 @@
 (function () {
   const AUTH_NOTICE_KEY = 'sattasheet:auth-notice'
 
-  const SEED_BETS = [
-    { date: '2025-03-28', lagaya: 500, banaya: 1100 },
-    { date: '2025-03-29', lagaya: 300, banaya: 596 },
-    { date: '2025-03-29', lagaya: 295, banaya: 590 },
-    { date: '2025-03-29', lagaya: 300, banaya: 630 },
-    { date: '2025-03-29', lagaya: 200, banaya: 400 },
-    { date: '2025-03-29', lagaya: 100, banaya: 0 },
-    { date: '2025-03-29', lagaya: 100, banaya: 0 },
-    { date: '2025-03-29', lagaya: 101, banaya: 0 },
-    { date: '2025-03-30', lagaya: 200, banaya: 400 },
-    { date: '2025-03-30', lagaya: 200, banaya: 380 },
-    { date: '2025-03-30', lagaya: 300, banaya: 600 },
-    { date: '2025-03-30', lagaya: 100, banaya: 0 },
-    { date: '2025-03-30', lagaya: 100, banaya: 0 },
-    { date: '2025-03-30', lagaya: 200, banaya: 400 },
-    { date: '2025-03-30', lagaya: 100, banaya: 200 },
-    { date: '2025-03-30', lagaya: 200, banaya: 400 },
-    { date: '2025-03-30', lagaya: 200, banaya: 400 },
-    { date: '2025-04-02', lagaya: 200, banaya: 0 },
-    { date: '2025-04-02', lagaya: 200, banaya: 0 },
-    { date: '2025-04-02', lagaya: 200, banaya: 400 },
-    { date: '2025-04-02', lagaya: 200, banaya: 0 },
-    { date: '2025-04-02', lagaya: 200, banaya: 0 },
-    { date: '2025-04-02', lagaya: 300, banaya: null },
-    { date: '2025-04-02', lagaya: 200, banaya: null },
-  ]
-
   function isLocalHostname(hostname) {
     const normalized = String(hostname || '').trim().toLowerCase()
 
@@ -57,6 +30,58 @@
   function getConfirmedAt(user) {
     if (!user) return ''
     return user.email_confirmed_at || user.confirmed_at || ''
+  }
+
+  function getErrorMessage(error, fallback) {
+    if (typeof error === 'string' && error.trim()) return error.trim()
+    if (error && typeof error.message === 'string' && error.message.trim()) return error.message.trim()
+    return fallback || 'Unexpected error.'
+  }
+
+  function getSupabaseErrorMeta(error) {
+    const message = getErrorMessage(error, '')
+    const details = error && typeof error.details === 'string' ? error.details.trim() : ''
+    const hint = error && typeof error.hint === 'string' ? error.hint.trim() : ''
+    const code = error && error.code ? String(error.code).trim() : ''
+    const normalized = [message, details, hint, code]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    const isMissingBetsTable =
+      code === 'PGRST205' ||
+      normalized.includes("could not find the table 'public.bets'") ||
+      normalized.includes('public.bets') && normalized.includes('schema cache') ||
+      normalized.includes('relation "public.bets" does not exist') ||
+      normalized.includes('relation "bets" does not exist')
+
+    return {
+      code,
+      message,
+      details,
+      hint,
+      normalized,
+      isMissingBetsTable
+    }
+  }
+
+  function isMissingBetsTableError(error) {
+    return getSupabaseErrorMeta(error).isMissingBetsTable
+  }
+
+  function getBetsSetupState(routeLabel) {
+    const area = routeLabel || 'app'
+
+    return {
+      icon: 'database',
+      title: 'Finish Supabase setup',
+      message: `The ${area} expects a public.bets table, but Supabase could not find it in the schema cache.`,
+      action: 'Run the SQL in supabase/setup.sql in the Supabase SQL editor, then refresh this page.'
+    }
+  }
+
+  function getBetsSetupInlineMessage() {
+    return 'Supabase could not find public.bets. Run the SQL in supabase/setup.sql, then retry.'
   }
 
   function isUserEmailConfirmed(user) {
@@ -185,26 +210,22 @@
   }
 
   async function signOut(client) {
-    await client.auth.signOut()
-    window.location.href = pageHref('index')
-  }
-
-  async function seedBetsIfNeeded(client, userId) {
-    const { count, error } = await client
-      .from('bets')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-
-    if (error) {
-      throw error
-    }
-
-    if (count === 0) {
-      const rows = SEED_BETS.map((bet) => ({ ...bet, user_id: userId }))
-      const { error: insertError } = await client.from('bets').insert(rows)
-      if (insertError) {
-        throw insertError
+    try {
+      if (client && client.auth) {
+        const { error } = await client.auth.signOut({ scope: 'local' })
+        if (error) {
+          throw error
+        }
       }
+    } finally {
+      try {
+        window.sessionStorage.removeItem(AUTH_NOTICE_KEY)
+      } catch (error) {
+        // Ignore storage cleanup failures.
+      }
+
+      document.body.style.overflow = ''
+      window.location.href = pageHref('index')
     }
   }
 
@@ -413,18 +434,21 @@
 
   window.SattaSheetApp = {
     AUTH_NOTICE_KEY,
-    SEED_BETS,
     createSupabaseClient,
     getRuntimeConfig,
     getEmailRedirectUrl,
     getPublicAppUrl,
     isUserEmailConfirmed,
+    getErrorMessage,
+    getSupabaseErrorMeta,
+    isMissingBetsTableError,
+    getBetsSetupState,
+    getBetsSetupInlineMessage,
     pushAuthNotice,
     consumeAuthNotice,
     redirectIfSessionExists,
     requireSession,
     signOut,
-    seedBetsIfNeeded,
     fetchBets,
     computeBetStats,
     filterBetsByRange,

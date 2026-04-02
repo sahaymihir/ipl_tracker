@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const charts = {}
+  let chartRenderToken = 0
 
   const elements = {
     fatal: document.getElementById('fatal-state'),
@@ -57,13 +58,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `${value >= 0 ? '+' : '-'}₹${absolute}`
   }
 
-  function showFatal(message) {
+  function showFatal(error) {
+    const setupState = app.isMissingBetsTableError(error)
+      ? app.getBetsSetupState('analytics')
+      : null
+    const message = app.getErrorMessage(error, 'Unable to load analytics right now.')
+
+    Object.keys(charts).forEach(destroyChart)
+    elements.app.classList.add('hidden')
     elements.fatal.classList.remove('hidden')
     elements.fatal.innerHTML = `
       <div class="empty-state">
-        <span class="material-symbols-outlined">error</span>
-        <h3>Analytics unavailable</h3>
-        <p class="empty-copy">${app.escapeHtml(message)}</p>
+        <span class="material-symbols-outlined">${setupState ? setupState.icon : 'error'}</span>
+        <h3>${app.escapeHtml(setupState ? setupState.title : 'Analytics unavailable')}</h3>
+        <p class="empty-copy">${app.escapeHtml(setupState ? setupState.message : message)}</p>
+        ${setupState ? `<p class="empty-copy">${app.escapeHtml(setupState.action)}</p>` : ''}
       </div>
     `
   }
@@ -73,6 +82,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       charts[name].destroy()
       delete charts[name]
     }
+  }
+
+  function bindSignOutButtons() {
+    elements.signoutButtons.forEach((button) => {
+      button.addEventListener('click', async () => {
+        button.disabled = true
+        await app.signOut(client)
+      })
+    })
   }
 
   function setRange(range) {
@@ -93,6 +111,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     gradient.addColorStop(0, colorA)
     gradient.addColorStop(1, colorB)
     return gradient
+  }
+
+  function getAxisOptions() {
+    return {
+      x: {
+        ticks: { color: '#91a0c7' },
+        grid: { display: false }
+      },
+      y: {
+        ticks: {
+          color: '#91a0c7',
+          callback: (value) => `₹${app.formatCompact(value)}`
+        },
+        grid: { color: 'rgba(137, 160, 216, 0.12)' }
+      }
+    }
   }
 
   function renderHero(stats) {
@@ -126,37 +160,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.kpiSettled.textContent = String(stats.settled.length)
   }
 
-  function renderVolumeChart(stats) {
-    destroyChart('volume')
+  function ensureVolumeChart() {
+    if (charts.volume) return charts.volume
 
-    const daily = stats.daily
-    const labels = daily.map((day) => app.formatDate(day.date).slice(0, 6))
     const ctx = elements.volumeCanvas.getContext('2d')
-    const investedGradient = createGradient(ctx, 'rgba(151, 169, 255, 0.9)', 'rgba(151, 169, 255, 0.12)')
-    const returnedGradient = createGradient(ctx, 'rgba(153, 247, 255, 0.92)', 'rgba(153, 247, 255, 0.12)')
-
     charts.volume = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels,
+        labels: [],
         datasets: [
           {
             label: 'Lagaya',
-            data: daily.map((day) => day.lagaya),
+            data: [],
             borderRadius: 14,
-            borderSkipped: false,
-            backgroundColor: investedGradient
+            borderSkipped: false
           },
           {
             label: 'Banaya',
-            data: daily.map((day) => day.banaya),
+            data: [],
             borderRadius: 14,
-            borderSkipped: false,
-            backgroundColor: returnedGradient
+            borderSkipped: false
           }
         ]
       },
       options: {
+        animation: false,
         responsive: true,
         maintainAspectRatio: false,
         interaction: { intersect: false, mode: 'index' },
@@ -170,145 +198,156 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
         },
-        scales: {
-          x: {
-            ticks: { color: '#91a0c7' },
-            grid: { display: false }
-          },
-          y: {
-            ticks: {
-              color: '#91a0c7',
-              callback: (value) => `₹${app.formatCompact(value)}`
-            },
-            grid: { color: 'rgba(137, 160, 216, 0.12)' }
-          }
-        }
+        scales: getAxisOptions()
       }
     })
+
+    return charts.volume
   }
 
-  function renderEquityChart(stats) {
-    destroyChart('equity')
+  function renderVolumeChart(stats) {
+    const daily = stats.daily
+    const ctx = elements.volumeCanvas.getContext('2d')
+    const investedGradient = createGradient(ctx, 'rgba(151, 169, 255, 0.9)', 'rgba(151, 169, 255, 0.12)')
+    const returnedGradient = createGradient(ctx, 'rgba(153, 247, 255, 0.92)', 'rgba(153, 247, 255, 0.12)')
+    const chart = ensureVolumeChart()
 
-    const points = stats.equitySeries
+    chart.data.labels = daily.map((day) => app.formatDate(day.date).slice(0, 6))
+    chart.data.datasets[0].data = daily.map((day) => day.lagaya)
+    chart.data.datasets[0].backgroundColor = investedGradient
+    chart.data.datasets[1].data = daily.map((day) => day.banaya)
+    chart.data.datasets[1].backgroundColor = returnedGradient
+    chart.update('none')
+  }
+
+  function ensureEquityChart() {
+    if (charts.equity) return charts.equity
+
     const ctx = elements.equityCanvas.getContext('2d')
-    const gradient = createGradient(ctx, 'rgba(193, 128, 255, 0.28)', 'rgba(193, 128, 255, 0)')
-
     charts.equity = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: points.map((point) => app.formatDate(point.date).slice(0, 6)),
+        labels: [],
         datasets: [
           {
             label: 'Equity',
-            data: points.map((point) => point.value),
+            data: [],
             borderColor: '#c180ff',
-            backgroundColor: gradient,
             fill: true,
-            tension: 0.34,
+            tension: 0.26,
             pointRadius: 0,
-            pointHoverRadius: 4,
-            borderWidth: 3
+            pointHoverRadius: 2,
+            borderWidth: 2
           }
         ]
       },
       options: {
+        animation: false,
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false }
         },
-        scales: {
-          x: {
-            ticks: { color: '#91a0c7' },
-            grid: { display: false }
-          },
-          y: {
-            ticks: {
-              color: '#91a0c7',
-              callback: (value) => `₹${app.formatCompact(value)}`
-            },
-            grid: { color: 'rgba(137, 160, 216, 0.12)' }
-          }
-        }
+        scales: getAxisOptions()
       }
     })
+
+    return charts.equity
   }
 
-  function renderDistributionChart(stats) {
-    destroyChart('distribution')
+  function renderEquityChart(stats) {
+    const points = stats.equitySeries
+    const ctx = elements.equityCanvas.getContext('2d')
+    const gradient = createGradient(ctx, 'rgba(193, 128, 255, 0.24)', 'rgba(193, 128, 255, 0)')
+    const chart = ensureEquityChart()
 
-    const wins = stats.wins.length
-    const losses = stats.losses.length
-    const pending = stats.pending.length
+    chart.data.labels = points.map((point) => app.formatDate(point.date).slice(0, 6))
+    chart.data.datasets[0].data = points.map((point) => point.value)
+    chart.data.datasets[0].backgroundColor = gradient
+    chart.update('none')
+  }
+
+  function ensureDistributionChart() {
+    if (charts.distribution) return charts.distribution
+
     const ctx = elements.distributionCanvas.getContext('2d')
-
-    elements.distributionTotal.textContent = String(stats.totalBets)
-    elements.legendWins.textContent = String(wins)
-    elements.legendLosses.textContent = String(losses)
-    elements.legendPending.textContent = String(pending)
-
     charts.distribution = new Chart(ctx, {
       type: 'doughnut',
       data: {
         labels: ['Wins', 'Losses', 'Pending'],
         datasets: [
           {
-            data: [wins, losses, pending],
+            data: [0, 0, 0],
             backgroundColor: ['#7af1d6', '#ff7b95', '#ffcc73'],
             borderWidth: 0,
-            hoverOffset: 6
+            hoverOffset: 4
           }
         ]
       },
       options: {
+        animation: false,
         responsive: true,
         maintainAspectRatio: false,
         cutout: '72%',
         plugins: { legend: { display: false } }
       }
     })
+
+    return charts.distribution
   }
 
-  function renderPnlChart(stats) {
-    destroyChart('pnl')
+  function renderDistributionChart(stats) {
+    const wins = stats.wins.length
+    const losses = stats.losses.length
+    const pending = stats.pending.length
+    const chart = ensureDistributionChart()
 
-    const daily = stats.daily
+    elements.distributionTotal.textContent = String(stats.totalBets)
+    elements.legendWins.textContent = String(wins)
+    elements.legendLosses.textContent = String(losses)
+    elements.legendPending.textContent = String(pending)
+
+    chart.data.datasets[0].data = [wins, losses, pending]
+    chart.update('none')
+  }
+
+  function ensurePnlChart() {
+    if (charts.pnl) return charts.pnl
+
     const ctx = elements.pnlCanvas.getContext('2d')
-
     charts.pnl = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: daily.map((day) => app.formatDate(day.date).slice(0, 6)),
+        labels: [],
         datasets: [
           {
             label: 'Daily P&L',
-            data: daily.map((day) => day.netProfit),
+            data: [],
             borderRadius: 14,
-            borderSkipped: false,
-            backgroundColor: daily.map((day) => day.netProfit >= 0 ? '#7af1d6' : '#ff7b95')
+            borderSkipped: false
           }
         ]
       },
       options: {
+        animation: false,
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: {
-          x: {
-            ticks: { color: '#91a0c7' },
-            grid: { display: false }
-          },
-          y: {
-            ticks: {
-              color: '#91a0c7',
-              callback: (value) => `₹${app.formatCompact(value)}`
-            },
-            grid: { color: 'rgba(137, 160, 216, 0.12)' }
-          }
-        }
+        scales: getAxisOptions()
       }
     })
+
+    return charts.pnl
+  }
+
+  function renderPnlChart(stats) {
+    const daily = stats.daily
+    const chart = ensurePnlChart()
+
+    chart.data.labels = daily.map((day) => app.formatDate(day.date).slice(0, 6))
+    chart.data.datasets[0].data = daily.map((day) => day.netProfit)
+    chart.data.datasets[0].backgroundColor = daily.map((day) => day.netProfit >= 0 ? '#7af1d6' : '#ff7b95')
+    chart.update('none')
   }
 
   function renderBreakdown(stats) {
@@ -356,15 +395,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     `).join('')
   }
 
-  function render() {
+  function renderCharts(stats) {
+    chartRenderToken += 1
+    const visibleStats = stats || getVisibleStats()
+    renderVolumeChart(visibleStats)
+    renderEquityChart(visibleStats)
+    renderDistributionChart(visibleStats)
+    renderPnlChart(visibleStats)
+  }
+
+  function scheduleChartRender(stats) {
+    const token = ++chartRenderToken
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (token !== chartRenderToken) return
+        renderCharts(stats)
+      })
+    })
+  }
+
+  function render(options) {
+    const settings = options || {}
     const stats = getVisibleStats()
+
     renderHero(stats)
     renderKpis(stats)
-    renderVolumeChart(stats)
-    renderEquityChart(stats)
-    renderDistributionChart(stats)
-    renderPnlChart(stats)
     renderBreakdown(stats)
+
+    if (settings.includeCharts === false) return
+    if (settings.deferCharts) {
+      scheduleChartRender(stats)
+      return
+    }
+
+    renderCharts(stats)
   }
 
   if (!client) {
@@ -376,14 +441,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!session) return
 
   state.user = session.user
+  bindSignOutButtons()
   elements.app.classList.remove('hidden')
+  render({ includeCharts: false })
 
   try {
-    await app.seedBetsIfNeeded(client, state.user.id)
     state.bets = await app.fetchBets(client, state.user.id)
-    render()
+    elements.fatal.classList.add('hidden')
+    render({ deferCharts: true })
   } catch (error) {
-    showFatal(error.message || 'Unable to load analytics right now.')
+    showFatal(error)
     return
   }
 
@@ -391,9 +458,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     button.addEventListener('click', () => setRange(button.dataset.range))
   })
 
-  elements.signoutButtons.forEach((button) => {
-    button.addEventListener('click', async () => {
-      await app.signOut(client)
-    })
-  })
 })
