@@ -4,7 +4,7 @@
 .env.production
 
 # Config with keys
-config.js
+/config.js
 
 # OS files
 .DS_Store
