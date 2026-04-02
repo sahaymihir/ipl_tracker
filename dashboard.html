@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IPL LEDGER | High-Stakes Dashboard</title>
+<meta name="description" content="IPL Ledger - Track your IPL betting performance"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/api/config"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "on-surface-variant": "#e3bfb1",
+                    "surface-container-high": "#292932",
+                    "on-primary-container": "#541b00",
+                    "background": "#13131b",
+                    "primary-fixed-dim": "#ffb597",
+                    "on-secondary": "#003548",
+                    "outline-variant": "#5a4137",
+                    "tertiary": "#00e475",
+                    "primary": "#ffb597",
+                    "secondary-fixed-dim": "#75d1ff",
+                    "on-secondary-fixed": "#001e2b",
+                    "on-background": "#e4e1ed",
+                    "error": "#ffb4ab",
+                    "inverse-surface": "#e4e1ed",
+                    "tertiary-fixed-dim": "#00e475",
+                    "tertiary-container": "#00ac57",
+                    "surface-container-lowest": "#0d0d16",
+                    "surface-container-low": "#1b1b23",
+                    "on-tertiary": "#003918",
+                    "surface-dim": "#13131b",
+                    "inverse-on-surface": "#302f39",
+                    "on-surface": "#e4e1ed",
+                    "surface-container-highest": "#34343d",
+                    "on-secondary-fixed-variant": "#004d67",
+                    "surface-variant": "#34343d",
+                    "secondary-container": "#00c1fd",
+                    "on-tertiary-fixed": "#00210b",
+                    "primary-fixed": "#ffdbcd",
+                    "outline": "#aa8a7d",
+                    "surface-tint": "#ffb597",
+                    "on-error-container": "#ffdad6",
+                    "on-primary": "#591d00",
+                    "error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#005226",
+                    "secondary": "#8fd8ff",
+                    "on-error": "#690005",
+                    "surface-container": "#1f1f28",
+                    "inverse-primary": "#a53d00",
+                    "primary-container": "#ff6200",
+                    "surface-bright": "#393842",
+                    "surface": "#13131b",
+                    "on-primary-fixed": "#360f00",
+                    "on-tertiary-container": "#003617",
+                    "secondary-fixed": "#c2e8ff",
+                    "on-secondary-container": "#004b65",
+                    "on-primary-fixed-variant": "#7e2c00",
+                    "tertiary-fixed": "#62ff96"
+                },
+                fontFamily: {
+                    "headline": ["Bebas Neue"],
+                    "body": ["Sora"],
+                    "mono": ["JetBrains Mono"]
+                },
+                borderRadius: {
+                    "DEFAULT": "0px",
+                    "lg": "0px",
+                    "xl": "0px",
+                    "full": "9999px"
+                },
+            },
+        },
+    }
+</script>
+<style>
+    .cricket-seam-pattern {
+        background-image: repeating-linear-gradient(45deg, rgba(255, 98, 0, 0.05) 0px, rgba(255, 98, 0, 0.05) 1px, transparent 1px, transparent 10px);
+    }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    input:focus { outline: none !important; box-shadow: none !important; }
+    body { min-height: max(884px, 100dvh); }
+    .drawer-overlay { transition: opacity 0.3s ease; }
+    .drawer-panel { transition: transform 0.3s ease; }
+    .drawer-hidden .drawer-overlay { opacity: 0; pointer-events: none; }
+    .drawer-hidden .drawer-panel { transform: translateY(100%); }
+    .toast-hide { opacity: 0; transform: translateY(20px); pointer-events: none; }
+    .toast-show { opacity: 1; transform: translateY(0); }
+    .light-theme { --background: #F5F4F0; --surface-container-low: #FFFFFF; --surface-container-high: #EDE9E4; --on-background: #1A1A2E; --on-surface: #1A1A2E; --outline-variant: #D4C5BE; }
+</style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary-container selection:text-on-primary-container cricket-seam-pattern min-h-screen pb-24 overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#13131b]/70 backdrop-blur-xl border-b-[2px] border-[#FF6200]/15 shadow-[0px_24px_48px_rgba(8,8,16,0.4)] flex justify-between items-center px-5 h-16">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#FF6200] text-2xl">analytics</span>
+<h1 class="font-['Bebas_Neue'] tracking-[0.05em] uppercase text-2xl font-black text-[#FF6200]">IPL LEDGER</h1>
+</div>
+<div class="flex items-center gap-1">
+<button id="theme-toggle-btn" class="w-10 h-10 flex items-center justify-center hover:bg-[#FF6200]/10 transition-colors duration-200 active:scale-95">
+<span id="theme-icon" class="material-symbols-outlined text-[#FF6200]">light_mode</span>
+</button>
+<button id="logout-btn" class="w-10 h-10 flex items-center justify-center hover:bg-[#FF6200]/10 transition-colors duration-200 active:scale-95">
+<span class="material-symbols-outlined text-[#FF6200]">logout</span>
+</button>
+</div>
+</header>
+<main class="pt-20 px-4 space-y-6 max-w-md mx-auto">
+<!-- Zone 1: Command Strip -->
+<section id="zone-stats" class="grid grid-cols-2 gap-0.5 bg-background overflow-hidden border border-outline-variant/15">
+<div class="bg-surface-container-low p-4 flex flex-col justify-between h-24">
+<span class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/60">Total Invested</span>
+<span id="stat-invested" class="font-mono text-lg font-bold text-on-surface">₹ 0</span>
+</div>
+<div class="bg-surface-container-low p-4 flex flex-col justify-between h-24">
+<span class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/60">Total Returned</span>
+<span id="stat-returned" class="font-mono text-lg font-bold text-on-surface">₹ 0</span>
+</div>
+<div id="pnl-card" class="bg-surface-container-high p-4 flex flex-col justify-between h-24 border-l-4 border-tertiary">
+<span class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/60">Net P&amp;L</span>
+<span id="stat-pnl" class="font-headline text-3xl text-tertiary drop-shadow-[0_0_8px_rgba(0,230,118,0.3)]">+₹ 0</span>
+</div>
+<div class="bg-surface-container-high p-4 flex flex-col justify-between h-24">
+<span class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/60">Win Rate</span>
+<span id="stat-winrate" class="font-headline text-3xl text-on-surface">0%</span>
+</div>
+<div class="bg-surface-container-low p-4 flex flex-col justify-between h-24">
+<span class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/60">ROI</span>
+<span id="stat-roi" class="font-headline text-3xl text-secondary">0%</span>
+</div>
+<div class="bg-surface-container-low p-4 flex flex-col justify-between h-24">
+<span class="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant/60">Streak</span>
+<div class="flex items-baseline gap-1">
+<span id="stat-streak" class="font-headline text-3xl text-primary-container">—</span>
+<span id="streak-fire" class="material-symbols-outlined text-primary-container text-sm hidden" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+</div>
+</section>
+<!-- Zone 2: Charts -->
+<section id="zone-charts" class="space-y-4">
+<h2 class="font-headline text-xl tracking-wider text-on-surface-variant/80 px-1">Performance Analytics</h2>
+<div class="bg-surface-container-low p-5 relative overflow-hidden h-48 border-l-4 border-primary">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold uppercase tracking-widest">Equity Curve</span>
+<span id="equity-week-change" class="font-mono text-[10px] text-tertiary"></span>
+</div>
+<canvas id="equityChart" class="absolute bottom-0 left-0 w-full" style="height:100px;"></canvas>
+</div>
+<!-- Daily P&L Bar Chart -->
+<div class="bg-surface-container-low p-5 relative overflow-hidden h-48 border-l-4 border-tertiary">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[10px] font-bold uppercase tracking-widest">Daily P&amp;L</span>
+</div>
+<canvas id="dailyChart" style="height:120px;"></canvas>
+</div>
+<!-- Result Breakdown (Donut) -->
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-5 flex flex-col items-center justify-center relative aspect-square border-l-4 border-secondary">
+<div class="relative w-28 h-28">
+<canvas id="donutChart"></canvas>
+<div id="donut-center" class="absolute inset-0 flex flex-col items-center justify-center">
+<span id="donut-total" class="font-headline text-3xl leading-none">0</span>
+<span class="text-[8px] font-bold opacity-60">TOTAL BETS</span>
+</div>
+</div>
+</div>
+<div id="donut-legend" class="bg-surface-container-low p-5 flex flex-col justify-center space-y-3">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-primary-container"></div>
+<span id="legend-wins" class="text-[10px] font-bold">WINS (0)</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-secondary"></div>
+<span id="legend-losses" class="text-[10px] font-bold">LOSS (0)</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-amber-500"></div>
+<span id="legend-pending" class="text-[10px] font-bold">PENDING (0)</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Zone 3: Bets Feed -->
+<section id="zone-bets" class="space-y-4">
+<div class="flex justify-between items-center px-1">
+<h2 class="font-headline text-xl tracking-wider text-on-surface-variant/80">Trading Blotter</h2>
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-sm text-on-surface-variant/40">filter_list</span>
+<span id="feed-count" class="text-[10px] font-bold uppercase text-on-surface-variant/40">0 Bets</span>
+</div>
+</div>
+<div id="filter-tabs" class="flex bg-surface-container-low overflow-x-auto no-scrollbar mb-4">
+<button data-filter="all" class="px-6 py-3 text-[10px] font-bold uppercase tracking-tighter bg-primary-container text-black">All</button>
+<button data-filter="win" class="px-6 py-3 text-[10px] font-bold uppercase tracking-tighter text-on-surface-variant/60 border-r border-outline-variant/10">Wins</button>
+<button data-filter="loss" class="px-6 py-3 text-[10px] font-bold uppercase tracking-tighter text-on-surface-variant/60 border-r border-outline-variant/10">Losses</button>
+<button data-filter="pending" class="px-6 py-3 text-[10px] font-bold uppercase tracking-tighter text-on-surface-variant/60">Pending</button>
+</div>
+<div id="bets-container" class="space-y-0.5"></div>
+</section>
+<!-- Zone 4: Live (pending only) -->
+<section id="zone-live" class="space-y-4 hidden">
+<h2 class="font-headline text-xl tracking-wider text-on-surface-variant/80 px-1">Live Bets</h2>
+<div id="live-bets-container" class="space-y-0.5"></div>
+<div id="no-live" class="hidden bg-surface-container-low p-8 flex flex-col items-center justify-center border border-outline-variant/15">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant/20 mb-2">sensors_off</span>
+<p class="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/30">No live bets</p>
+</div>
+</section>
+<!-- Zone 5: Account -->
+<section id="zone-account" class="hidden">
+<div class="bg-surface-container-low p-6 border border-outline-variant/15 space-y-6">
+<h2 class="font-headline text-3xl text-primary-container uppercase">Account</h2>
+<div class="space-y-4">
+<div class="space-y-1">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Email</span>
+<p id="account-email" class="font-mono text-sm text-on-surface">—</p>
+</div>
+<div class="space-y-1">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Days Tracked</span>
+<p id="account-days" class="font-headline text-3xl text-on-surface">0</p>
+</div>
+</div>
+<button id="account-logout-btn" class="w-full bg-error-container text-on-error-container font-headline text-xl py-4 active:scale-[0.98] transition-transform">SIGN OUT</button>
+</div>
+</section>
+</main>
+<!-- FAB -->
+<button id="fab-btn" class="fixed bottom-24 right-6 w-16 h-16 bg-primary-container text-black shadow-[0_12px_24px_rgba(255,98,0,0.4)] flex items-center justify-center active:scale-90 transition-all duration-200 z-40">
+<span class="material-symbols-outlined text-3xl font-bold">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-[#13131b]/70 backdrop-blur-xl border-t-[0.2rem] border-[#13131b] flex justify-around items-center px-2 pb-safe h-16">
+<div id="nav-ledger" data-nav="ledger" class="nav-item flex flex-col items-center justify-center text-[#FF6200] p-2 bg-[#FF6200]/5 scale-100 active:scale-90 transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="font-['Sora'] font-semibold text-[10px] uppercase tracking-wider">Ledger</span>
+</div>
+<div id="nav-live" data-nav="live" class="nav-item flex flex-col items-center justify-center text-white/40 p-2 hover:text-white/90 scale-100 active:scale-90 transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined">sensors</span>
+<span class="font-['Sora'] font-semibold text-[10px] uppercase tracking-wider">Live</span>
+</div>
+<div id="nav-stats" data-nav="stats" class="nav-item flex flex-col items-center justify-center text-white/40 p-2 hover:text-white/90 scale-100 active:scale-90 transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-['Sora'] font-semibold text-[10px] uppercase tracking-wider">Stats</span>
+</div>
+<div id="nav-account" data-nav="account" class="nav-item flex flex-col items-center justify-center text-white/40 p-2 hover:text-white/90 scale-100 active:scale-90 transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined">person</span>
+<span class="font-['Sora'] font-semibold text-[10px] uppercase tracking-wider">Account</span>
+</div>
+</nav>
+<!-- Add Bet Drawer -->
+<div id="drawer-wrapper" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] drawer-hidden" style="display:flex;flex-direction:column;justify-content:flex-end;">
+<div class="drawer-overlay absolute inset-0" id="drawer-overlay-bg"></div>
+<div class="drawer-panel bg-surface p-6 border-t-[4px] border-primary-container max-h-[707px] overflow-y-auto relative z-10">
+<div class="flex justify-between items-center mb-8">
+<h2 class="font-headline text-3xl text-primary-container uppercase">New Entry</h2>
+<button id="drawer-close-btn" class="material-symbols-outlined text-white/40">close</button>
+</div>
+<form id="bet-form" class="space-y-6">
+<div class="space-y-1">
+<label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Date</label>
+<input id="bet-date" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-body focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" type="date"/>
+</div>
+<div class="space-y-1">
+<label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Match Instance</label>
+<input id="bet-match" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-body focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" placeholder="e.g. LSG vs DC" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="space-y-1">
+<label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Lagaya (Stake)</label>
+<input id="bet-lagaya" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-mono focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" placeholder="0.00" type="number" min="1" step="any"/>
+</div>
+<div class="space-y-1">
+<label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Banaya (Returns)</label>
+<input id="bet-banaya" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-mono focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" placeholder="Leave empty = pending" type="number" min="0" step="any"/>
+</div>
+</div>
+<div id="bet-form-error" class="hidden text-error text-[11px] font-semibold text-center py-2 bg-error-container/10 border border-error/20"></div>
+<div class="bg-surface-container-lowest p-6 flex flex-col items-center justify-center border border-outline-variant/10">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">Projected Net</span>
+<span id="projected-net" class="font-headline text-5xl text-tertiary">+₹ 0</span>
+</div>
+<button id="bet-submit-btn" class="w-full bg-primary-container text-black font-headline text-2xl py-5 active:scale-[0.98] transition-transform" type="submit">LOG BET TRANSACTION</button>
+</form>
+</div>
+</div>
+<!-- Toast -->
+<div id="toast" class="fixed bottom-20 left-4 z-50 flex items-center gap-3 bg-surface-container-highest px-4 py-3 border-l-4 border-tertiary shadow-2xl transition-all duration-300 toast-hide">
+<span class="material-symbols-outlined text-tertiary">check_circle</span>
+<span id="toast-text" class="text-[10px] font-bold uppercase tracking-widest">Bet logged successfully ✓</span>
+</div>
+<script>
+const runtimeConfig = window.__APP_CONFIG__ || {}
+const runtimeConfigError = !runtimeConfig.supabaseUrl || !runtimeConfig.supabaseAnonKey
+  ? 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy or restart `vercel dev`.'
+  : null
+const sb = runtimeConfigError
+  ? null
+  : window.supabase.createClient(runtimeConfig.supabaseUrl, runtimeConfig.supabaseAnonKey)
+
+let currentUser = null
+let allBets = []
+let activeFilter = 'all'
+let activeNav = 'ledger'
+let equityChartInstance = null
+let donutChartInstance = null
+let dailyChartInstance = null
+
+const SEED_BETS = [
+  { date: '2025-03-28', lagaya: 500, banaya: 1100 },
+  { date: '2025-03-29', lagaya: 300, banaya: 596 },
+  { date: '2025-03-29', lagaya: 295, banaya: 590 },
+  { date: '2025-03-29', lagaya: 300, banaya: 630 },
+  { date: '2025-03-29', lagaya: 200, banaya: 400 },
+  { date: '2025-03-29', lagaya: 100, banaya: 0 },
+  { date: '2025-03-29', lagaya: 100, banaya: 0 },
+  { date: '2025-03-29', lagaya: 101, banaya: 0 },
+  { date: '2025-03-30', lagaya: 200, banaya: 400 },
+  { date: '2025-03-30', lagaya: 200, banaya: 380 },
+  { date: '2025-03-30', lagaya: 300, banaya: 600 },
+  { date: '2025-03-30', lagaya: 100, banaya: 0 },
+  { date: '2025-03-30', lagaya: 100, banaya: 0 },
+  { date: '2025-03-30', lagaya: 200, banaya: 400 },
+  { date: '2025-03-30', lagaya: 100, banaya: 200 },
+  { date: '2025-03-30', lagaya: 200, banaya: 400 },
+  { date: '2025-03-30', lagaya: 200, banaya: 400 },
+  { date: '2025-04-02', lagaya: 200, banaya: 0 },
+  { date: '2025-04-02', lagaya: 200, banaya: 0 },
+  { date: '2025-04-02', lagaya: 200, banaya: 400 },
+  { date: '2025-04-02', lagaya: 200, banaya: 0 },
+  { date: '2025-04-02', lagaya: 200, banaya: 0 },
+  { date: '2025-04-02', lagaya: 300, banaya: null },
+  { date: '2025-04-02', lagaya: 200, banaya: null },
+]
+
+function renderFatalConfigError(message) {
+  document.body.innerHTML = `
+    <main class="min-h-screen flex items-center justify-center px-4">
+      <section class="w-full max-w-md bg-surface-container-low border border-error/20 p-6 space-y-3">
+        <p class="text-[10px] font-bold uppercase tracking-widest text-error">Configuration Error</p>
+        <h1 class="font-headline text-3xl text-primary-container uppercase">Supabase env vars are missing</h1>
+        <p id="config-error-detail" class="text-sm text-on-surface/80 leading-relaxed"></p>
+      </section>
+    </main>
+  `
+  document.getElementById('config-error-detail').textContent = message
+}
+
+// ── Theme ──
+function initTheme() {
+  const saved = localStorage.getItem('ipl-theme')
+  if (saved === 'light') applyLight()
+  else applyDark()
+}
+function applyLight() {
+  document.documentElement.classList.remove('dark')
+  document.body.style.setProperty('--bg-override', '#F5F4F0')
+  document.body.style.background = '#F5F4F0'
+  document.getElementById('theme-icon').textContent = 'dark_mode'
+  localStorage.setItem('ipl-theme', 'light')
+  rerenderCharts()
+}
+function applyDark() {
+  document.documentElement.classList.add('dark')
+  document.body.style.background = ''
+  document.getElementById('theme-icon').textContent = 'light_mode'
+  localStorage.setItem('ipl-theme', 'dark')
+  rerenderCharts()
+}
+function toggleTheme() {
+  if (document.documentElement.classList.contains('dark')) applyLight()
+  else applyDark()
+}
+function isDark() { return document.documentElement.classList.contains('dark') }
+
+// ── Auth Guard ──
+async function init() {
+  initTheme()
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session) { window.location.href = 'index.html'; return }
+  currentUser = session.user
+  document.getElementById('account-email').textContent = currentUser.email
+
+  // Check for seed
+  const { count } = await sb.from('bets').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
+  if (count === 0) {
+    const rows = SEED_BETS.map(b => ({ ...b, user_id: currentUser.id }))
+    await sb.from('bets').insert(rows)
+  }
+
+  await fetchAndRender()
+  setupEventListeners()
+}
+
+async function fetchAndRender() {
+  const { data, error } = await sb.from('bets').select('*').eq('user_id', currentUser.id).order('date', { ascending: true }).order('created_at', { ascending: true })
+  if (error) { console.error(error); return }
+  allBets = data || []
+  renderStats()
+  renderCharts()
+  renderBets()
+  renderLive()
+  renderAccountDays()
+}
+
+// ── Stats ──
+function renderStats() {
+  const invested = allBets.reduce((s, b) => s + Number(b.lagaya), 0)
+  const returned = allBets.reduce((s, b) => s + (b.banaya != null ? Number(b.banaya) : 0), 0)
+  const netProfit = allBets.reduce((s, b) => s + Number(b.net_profit || 0), 0)
+  const settled = allBets.filter(b => b.result !== 'pending')
+  const wins = settled.filter(b => b.result === 'win').length
+  const winRate = settled.length > 0 ? (wins / settled.length * 100) : 0
+  const roi = invested > 0 ? (netProfit / invested * 100) : 0
+
+  // Streak
+  const sortedSettled = allBets.filter(b => b.result !== 'pending').sort((a, b) => {
+    const d = new Date(b.date) - new Date(a.date)
+    return d !== 0 ? d : new Date(b.created_at) - new Date(a.created_at)
+  })
+  let streak = 0, streakType = ''
+  if (sortedSettled.length > 0) {
+    streakType = sortedSettled[0].result
+    for (const bet of sortedSettled) {
+      if (bet.result === streakType) streak++
+      else break
+    }
+  }
+
+  animateValue('stat-invested', 0, invested, 800, v => '₹ ' + fmtNum(v))
+  animateValue('stat-returned', 0, returned, 800, v => '₹ ' + fmtNum(v))
+  animateValue('stat-pnl', 0, netProfit, 800, v => (v >= 0 ? '+' : '') + '₹ ' + fmtNum(Math.abs(v)))
+  animateValue('stat-winrate', 0, winRate, 800, v => v.toFixed(1) + '%')
+  animateValue('stat-roi', 0, roi, 800, v => v.toFixed(1) + '%')
+
+  const pnlCard = document.getElementById('pnl-card')
+  const pnlEl = document.getElementById('stat-pnl')
+  if (netProfit >= 0) {
+    pnlCard.classList.remove('border-error')
+    pnlCard.classList.add('border-tertiary')
+    pnlEl.classList.remove('text-error')
+    pnlEl.classList.add('text-tertiary')
+    pnlEl.className = pnlEl.className.replace(/drop-shadow-\[.*?\]/g, '') + ' drop-shadow-[0_0_8px_rgba(0,230,118,0.3)]'
+  } else {
+    pnlCard.classList.remove('border-tertiary')
+    pnlCard.classList.add('border-error')
+    pnlEl.classList.remove('text-tertiary')
+    pnlEl.classList.add('text-error')
+    pnlEl.className = pnlEl.className.replace(/drop-shadow-\[.*?\]/g, '') + ' drop-shadow-[0_0_8px_rgba(255,180,171,0.3)]'
+  }
+
+  const streakEl = document.getElementById('stat-streak')
+  const fireEl = document.getElementById('streak-fire')
+  if (streak > 0) {
+    const label = streakType === 'win' ? 'W' : 'L'
+    streakEl.textContent = label + streak
+    streakEl.className = 'font-headline text-3xl ' + (streakType === 'win' ? 'text-primary-container animate-pulse' : 'text-secondary')
+    fireEl.classList.toggle('hidden', streakType !== 'win')
+  } else {
+    streakEl.textContent = '—'
+    fireEl.classList.add('hidden')
+  }
+}
+
+function animateValue(id, start, end, duration, formatter) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const startTime = performance.now()
+  function tick(now) {
+    const elapsed = now - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = 1 - Math.pow(1 - progress, 3)
+    const current = start + (end - start) * eased
+    el.textContent = formatter(current)
+    if (progress < 1) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+}
+
+function fmtNum(n) {
+  return Math.round(n).toLocaleString('en-IN')
+}
+
+// ── Charts ──
+function renderCharts() {
+  renderEquityChart()
+  renderDonutChart()
+  renderDailyChart()
+}
+
+function rerenderCharts() {
+  if (allBets.length > 0) renderCharts()
+}
+
+function getChartTextColor() { return isDark() ? '#e4e1ed' : '#1A1A2E' }
+function getChartGridColor() { return isDark() ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)' }
+
+function renderEquityChart() {
+  const ctx = document.getElementById('equityChart')
+  if (!ctx) return
+  if (equityChartInstance) equityChartInstance.destroy()
+
+  const sorted = [...allBets].sort((a, b) => new Date(a.date) - new Date(b.date) || new Date(a.created_at) - new Date(b.created_at))
+  let cumulative = 0
+  const labels = []
+  const data = []
+  sorted.forEach((b, i) => {
+    cumulative += Number(b.net_profit || 0)
+    labels.push(b.date)
+    data.push(cumulative)
+  })
+
+  equityChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: '#FF6200',
+        backgroundColor: (context) => {
+          const chart = context.chart
+          const { ctx: c, chartArea } = chart
+          if (!chartArea) return 'transparent'
+          const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+          gradient.addColorStop(0, 'rgba(255, 98, 0, 0.3)')
+          gradient.addColorStop(1, 'rgba(255, 98, 0, 0)')
+          return gradient
+        },
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      },
+      interaction: { intersect: false, mode: 'index' }
+    }
+  })
+}
+
+function renderDonutChart() {
+  const ctx = document.getElementById('donutChart')
+  if (!ctx) return
+  if (donutChartInstance) donutChartInstance.destroy()
+
+  const wins = allBets.filter(b => b.result === 'win').length
+  const losses = allBets.filter(b => b.result === 'loss').length
+  const pending = allBets.filter(b => b.result === 'pending').length
+  const total = allBets.length
+
+  document.getElementById('donut-total').textContent = total
+  document.getElementById('legend-wins').textContent = `WINS (${wins})`
+  document.getElementById('legend-losses').textContent = `LOSS (${losses})`
+  document.getElementById('legend-pending').textContent = `PENDING (${pending})`
+
+  donutChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Wins', 'Losses', 'Pending'],
+      datasets: [{
+        data: [wins, losses, pending],
+        backgroundColor: ['#FF6200', '#8fd8ff', '#F59E0B'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '72%',
+      plugins: { legend: { display: false } }
+    }
+  })
+}
+
+function renderDailyChart() {
+  const ctx = document.getElementById('dailyChart')
+  if (!ctx) return
+  if (dailyChartInstance) dailyChartInstance.destroy()
+
+  const dailyMap = {}
+  allBets.forEach(b => {
+    if (!dailyMap[b.date]) dailyMap[b.date] = 0
+    dailyMap[b.date] += Number(b.net_profit || 0)
+  })
+  const dates = Object.keys(dailyMap).sort()
+  const values = dates.map(d => dailyMap[d])
+  const colors = values.map(v => v >= 0 ? '#FF6200' : '#8fd8ff')
+
+  dailyChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates.map(d => { const p = d.split('-'); return p[2] + '/' + p[1] }),
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: getChartTextColor(), font: { size: 8, family: 'JetBrains Mono' } }, grid: { display: false } },
+        y: { ticks: { color: getChartTextColor(), font: { size: 8, family: 'JetBrains Mono' } }, grid: { color: getChartGridColor() } }
+      }
+    }
+  })
+}
+
+// ── Bets Feed ──
+function renderBets() {
+  const container = document.getElementById('bets-container')
+  const sorted = [...allBets].sort((a, b) => new Date(b.date) - new Date(a.date) || new Date(b.created_at) - new Date(a.created_at))
+  let filtered = sorted
+  if (activeFilter === 'win') filtered = sorted.filter(b => b.result === 'win')
+  else if (activeFilter === 'loss') filtered = sorted.filter(b => b.result === 'loss')
+  else if (activeFilter === 'pending') filtered = sorted.filter(b => b.result === 'pending')
+
+  document.getElementById('feed-count').textContent = filtered.length + ' Bets'
+  container.innerHTML = filtered.map((b, i) => betCardHTML(b, i)).join('')
+}
+
+function betCardHTML(b, idx) {
+  const dateStr = new Date(b.date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
+  const label = b.match_label || `Bet #${idx + 1}`
+  const net = Number(b.net_profit || 0)
+
+  if (b.result === 'pending') {
+    return `<div class="bg-surface-container-low p-4 border-l-4 border-amber-500 group active:bg-surface-container-high transition-colors">
+      <div class="flex justify-between items-start mb-2">
+        <div><p class="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-widest">${dateStr}</p>
+        <h3 class="font-headline text-lg text-on-surface leading-tight">${esc(label)}</h3></div>
+        <div class="text-right"><span class="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 font-bold">PENDING</span></div>
+      </div>
+      <div class="grid grid-cols-3 gap-2 border-t border-outline-variant/5 pt-3">
+        <div class="flex flex-col"><span class="text-[8px] font-bold opacity-40 uppercase">Lagaya</span><span class="font-mono text-xs">₹ ${fmtNum(b.lagaya)}</span></div>
+        <div class="flex flex-col"><span class="text-[8px] font-bold opacity-40 uppercase">Exp. Return</span><span class="font-mono text-xs">—</span></div>
+        <div class="flex flex-col items-end"><span class="text-[8px] font-bold opacity-40 uppercase">In Play</span><span class="material-symbols-outlined text-amber-500 text-xs animate-spin">progress_activity</span></div>
+      </div></div>`
+  }
+
+  const isWin = b.result === 'win'
+  const borderClass = isWin ? 'border-primary-container' : 'border-secondary'
+  const badgeBg = isWin ? 'bg-primary-container/10 text-primary-container' : 'bg-secondary/10 text-secondary'
+  const badgeText = isWin ? 'WIN' : 'LOSS'
+  const netColor = isWin ? 'text-tertiary' : 'text-error'
+  const netStr = (net >= 0 ? '+' : '-') + '₹ ' + fmtCompact(Math.abs(net))
+
+  return `<div class="bg-surface-container-low p-4 border-l-4 ${borderClass} group active:bg-surface-container-high transition-colors">
+    <div class="flex justify-between items-start mb-2">
+      <div><p class="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-widest">${dateStr}</p>
+      <h3 class="font-headline text-lg text-on-surface leading-tight">${esc(label)}</h3></div>
+      <div class="text-right"><span class="text-[10px] ${badgeBg} px-2 py-0.5 font-bold">${badgeText}</span></div>
+    </div>
+    <div class="grid grid-cols-3 gap-2 border-t border-outline-variant/5 pt-3">
+      <div class="flex flex-col"><span class="text-[8px] font-bold opacity-40 uppercase">Lagaya</span><span class="font-mono text-xs">₹ ${fmtNum(b.lagaya)}</span></div>
+      <div class="flex flex-col"><span class="text-[8px] font-bold opacity-40 uppercase">Banaya</span><span class="font-mono text-xs">₹ ${fmtNum(b.banaya)}</span></div>
+      <div class="flex flex-col items-end"><span class="text-[8px] font-bold opacity-40 uppercase">Net P&amp;L</span><span class="font-mono text-xs ${netColor} font-bold">${netStr}</span></div>
+    </div></div>`
+}
+
+function fmtCompact(n) {
+  if (n >= 100000) return (n / 100000).toFixed(1) + 'L'
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
+  return fmtNum(n)
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML }
+
+// ── Live ──
+function renderLive() {
+  const pending = allBets.filter(b => b.result === 'pending').sort((a, b) => new Date(b.date) - new Date(a.date))
+  const container = document.getElementById('live-bets-container')
+  const noLive = document.getElementById('no-live')
+  if (pending.length === 0) {
+    container.innerHTML = ''
+    noLive.classList.remove('hidden')
+  } else {
+    noLive.classList.add('hidden')
+    container.innerHTML = pending.map((b, i) => betCardHTML(b, i)).join('')
+  }
+}
+
+// ── Account ──
+function renderAccountDays() {
+  const dates = [...new Set(allBets.map(b => b.date))]
+  document.getElementById('account-days').textContent = dates.length
+}
+
+// ── Navigation ──
+function switchNav(nav) {
+  activeNav = nav
+  const zones = { stats: 'zone-stats', charts: 'zone-charts', bets: 'zone-bets', live: 'zone-live', account: 'zone-account' }
+  Object.values(zones).forEach(id => document.getElementById(id).classList.add('hidden'))
+
+  if (nav === 'ledger') {
+    document.getElementById('zone-stats').classList.remove('hidden')
+    document.getElementById('zone-bets').classList.remove('hidden')
+    document.getElementById('fab-btn').classList.remove('hidden')
+  } else if (nav === 'stats') {
+    document.getElementById('zone-stats').classList.remove('hidden')
+    document.getElementById('zone-charts').classList.remove('hidden')
+    document.getElementById('fab-btn').classList.add('hidden')
+    setTimeout(() => renderCharts(), 50)
+  } else if (nav === 'live') {
+    document.getElementById('zone-live').classList.remove('hidden')
+    document.getElementById('fab-btn').classList.add('hidden')
+  } else if (nav === 'account') {
+    document.getElementById('zone-account').classList.remove('hidden')
+    document.getElementById('fab-btn').classList.add('hidden')
+  }
+
+  document.querySelectorAll('.nav-item').forEach(el => {
+    const isActive = el.dataset.nav === nav
+    el.className = el.className.replace(/text-\[#FF6200\]/g, '').replace(/bg-\[#FF6200\]\/5/g, '').replace(/text-white\/40/g, '')
+    if (isActive) {
+      el.classList.add('text-[#FF6200]', 'bg-[#FF6200]/5')
+      el.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 1"
+    } else {
+      el.classList.add('text-white/40')
+      el.querySelector('.material-symbols-outlined').style.fontVariationSettings = "'FILL' 0"
+    }
+  })
+}
+
+// ── Drawer ──
+function openDrawer() {
+  const w = document.getElementById('drawer-wrapper')
+  w.classList.remove('drawer-hidden')
+  document.getElementById('bet-date').value = new Date().toISOString().split('T')[0]
+}
+function closeDrawer() {
+  document.getElementById('drawer-wrapper').classList.add('drawer-hidden')
+  document.getElementById('bet-form').reset()
+  document.getElementById('projected-net').textContent = '+₹ 0'
+  document.getElementById('projected-net').className = 'font-headline text-5xl text-tertiary'
+  document.getElementById('bet-form-error').classList.add('hidden')
+}
+
+function updateProjectedNet() {
+  const lagaya = parseFloat(document.getElementById('bet-lagaya').value) || 0
+  const banayaInput = document.getElementById('bet-banaya').value
+  const el = document.getElementById('projected-net')
+
+  if (banayaInput === '' || banayaInput === null) {
+    el.textContent = 'PENDING'
+    el.className = 'font-headline text-5xl text-amber-500'
+    return
+  }
+  const banaya = parseFloat(banayaInput) || 0
+  const net = banaya - lagaya
+  const sign = net >= 0 ? '+' : '-'
+  el.textContent = sign + '₹ ' + fmtNum(Math.abs(net))
+  el.className = 'font-headline text-5xl ' + (net >= 0 ? 'text-tertiary' : 'text-error')
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast')
+  document.getElementById('toast-text').textContent = msg || 'Bet logged successfully ✓'
+  t.classList.remove('toast-hide')
+  t.classList.add('toast-show')
+  setTimeout(() => { t.classList.remove('toast-show'); t.classList.add('toast-hide') }, 2500)
+}
+
+// ── Event Listeners ──
+function setupEventListeners() {
+  document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme)
+  document.getElementById('logout-btn').addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = 'index.html' })
+  document.getElementById('account-logout-btn').addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = 'index.html' })
+
+  document.getElementById('fab-btn').addEventListener('click', openDrawer)
+  document.getElementById('drawer-close-btn').addEventListener('click', closeDrawer)
+  document.getElementById('drawer-overlay-bg').addEventListener('click', closeDrawer)
+
+  document.getElementById('bet-lagaya').addEventListener('input', updateProjectedNet)
+  document.getElementById('bet-banaya').addEventListener('input', updateProjectedNet)
+
+  document.getElementById('bet-form').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const errEl = document.getElementById('bet-form-error')
+    const lagaya = parseFloat(document.getElementById('bet-lagaya').value)
+    if (!lagaya || lagaya <= 0) {
+      errEl.textContent = 'Lagaya must be greater than 0'
+      errEl.classList.remove('hidden')
+      return
+    }
+    errEl.classList.add('hidden')
+
+    const banayaVal = document.getElementById('bet-banaya').value
+    const banaya = banayaVal === '' ? null : parseFloat(banayaVal)
+    const dateVal = document.getElementById('bet-date').value
+    const matchLabel = document.getElementById('bet-match').value.trim() || null
+
+    document.getElementById('bet-submit-btn').textContent = 'LOGGING...'
+    document.getElementById('bet-submit-btn').disabled = true
+
+    const { error } = await sb.from('bets').insert({
+      user_id: currentUser.id,
+      date: dateVal,
+      lagaya,
+      banaya,
+      match_label: matchLabel
+    })
+
+    document.getElementById('bet-submit-btn').textContent = 'LOG BET TRANSACTION'
+    document.getElementById('bet-submit-btn').disabled = false
+
+    if (error) {
+      errEl.textContent = error.message
+      errEl.classList.remove('hidden')
+      return
+    }
+
+    closeDrawer()
+    showToast()
+    await fetchAndRender()
+  })
+
+  // Filter tabs
+  document.querySelectorAll('#filter-tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeFilter = btn.dataset.filter
+      document.querySelectorAll('#filter-tabs button').forEach(b => {
+        b.className = 'px-6 py-3 text-[10px] font-bold uppercase tracking-tighter ' +
+          (b.dataset.filter === activeFilter ? 'bg-primary-container text-black' : 'text-on-surface-variant/60 border-r border-outline-variant/10')
+      })
+      renderBets()
+    })
+  })
+
+  // Nav
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => switchNav(el.dataset.nav))
+  })
+}
+
+// ── Init ──
+if (!sb) {
+  renderFatalConfigError(runtimeConfigError)
+} else {
+  switchNav('ledger')
+  init()
+}
+</script>
+</body></html>

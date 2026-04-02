@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IPL LEDGER | Authenticate</title>
+<meta name="description" content="IPL Ledger - Login to your high-stakes betting dashboard"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/api/config"></script>
+<script>
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "on-surface-variant": "#e3bfb1",
+                    "surface-container-high": "#292932",
+                    "on-primary-container": "#541b00",
+                    "background": "#13131b",
+                    "primary-fixed-dim": "#ffb597",
+                    "on-secondary": "#003548",
+                    "outline-variant": "#5a4137",
+                    "tertiary": "#00e475",
+                    "primary": "#ffb597",
+                    "secondary-fixed-dim": "#75d1ff",
+                    "on-secondary-fixed": "#001e2b",
+                    "on-background": "#e4e1ed",
+                    "error": "#ffb4ab",
+                    "inverse-surface": "#e4e1ed",
+                    "tertiary-fixed-dim": "#00e475",
+                    "tertiary-container": "#00ac57",
+                    "surface-container-lowest": "#0d0d16",
+                    "surface-container-low": "#1b1b23",
+                    "on-tertiary": "#003918",
+                    "surface-dim": "#13131b",
+                    "inverse-on-surface": "#302f39",
+                    "on-surface": "#e4e1ed",
+                    "surface-container-highest": "#34343d",
+                    "on-secondary-fixed-variant": "#004d67",
+                    "surface-variant": "#34343d",
+                    "secondary-container": "#00c1fd",
+                    "on-tertiary-fixed": "#00210b",
+                    "primary-fixed": "#ffdbcd",
+                    "outline": "#aa8a7d",
+                    "surface-tint": "#ffb597",
+                    "on-error-container": "#ffdad6",
+                    "on-primary": "#591d00",
+                    "error-container": "#93000a",
+                    "on-tertiary-fixed-variant": "#005226",
+                    "secondary": "#8fd8ff",
+                    "on-error": "#690005",
+                    "surface-container": "#1f1f28",
+                    "inverse-primary": "#a53d00",
+                    "primary-container": "#ff6200",
+                    "surface-bright": "#393842",
+                    "surface": "#13131b",
+                    "on-primary-fixed": "#360f00",
+                    "on-tertiary-container": "#003617",
+                    "secondary-fixed": "#c2e8ff",
+                    "on-secondary-container": "#004b65",
+                    "on-primary-fixed-variant": "#7e2c00",
+                    "tertiary-fixed": "#62ff96"
+                },
+                fontFamily: {
+                    "headline": ["Bebas Neue"],
+                    "body": ["Sora"],
+                    "mono": ["JetBrains Mono"]
+                },
+                borderRadius: {
+                    "DEFAULT": "0px",
+                    "lg": "0px",
+                    "xl": "0px",
+                    "full": "9999px"
+                },
+            },
+        },
+    }
+</script>
+<style>
+    .cricket-seam-pattern {
+        background-image: repeating-linear-gradient(45deg, rgba(255, 98, 0, 0.05) 0px, rgba(255, 98, 0, 0.05) 1px, transparent 1px, transparent 10px);
+    }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    input:focus {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(24px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up {
+        animation: fadeInUp 0.6s ease-out forwards;
+    }
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 98, 0, 0); }
+        50% { box-shadow: 0 0 32px 4px rgba(255, 98, 0, 0.15); }
+    }
+    .pulse-glow {
+        animation: pulse-glow 3s ease-in-out infinite;
+    }
+</style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary-container selection:text-on-primary-container cricket-seam-pattern min-h-screen flex items-center justify-center overflow-x-hidden">
+
+<div class="w-full max-w-sm mx-auto px-6 animate-fade-in-up">
+    <!-- Logo -->
+    <div class="flex flex-col items-center mb-12">
+        <span class="material-symbols-outlined text-[#FF6200] text-5xl mb-4">analytics</span>
+        <h1 class="font-['Bebas_Neue'] tracking-[0.08em] uppercase text-5xl font-black text-[#FF6200]">IPL LEDGER</h1>
+        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-on-surface-variant/40 mt-2">RESTRICTED ACCESS</p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="bg-surface-container-low border border-outline-variant/15 p-6 pulse-glow">
+        <form id="login-form" class="space-y-6">
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Email</label>
+                <input id="email-input" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-body focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" placeholder="your@email.com" type="email" required/>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Password</label>
+                <input id="password-input" class="w-full bg-surface-container-low border-b-2 border-outline-variant py-3 font-mono focus:border-primary transition-colors text-on-surface placeholder:text-on-surface/20" placeholder="••••••••" type="password" required/>
+            </div>
+            <div id="error-message" class="hidden text-error text-[11px] font-semibold text-center py-2 bg-error-container/10 border border-error/20"></div>
+            <button id="submit-btn" class="w-full bg-primary-container text-black font-headline text-2xl py-5 active:scale-[0.98] transition-transform" type="submit">AUTHENTICATE</button>
+        </form>
+    </div>
+
+    <p class="text-[9px] text-on-surface-variant/20 text-center mt-8 uppercase tracking-widest">Encrypted • Single-User • Supabase Auth</p>
+</div>
+
+<script>
+const form = document.getElementById('login-form')
+const emailInput = document.getElementById('email-input')
+const passwordInput = document.getElementById('password-input')
+const errorMsg = document.getElementById('error-message')
+const submitBtn = document.getElementById('submit-btn')
+
+function getRuntimeConfig() {
+    const config = window.__APP_CONFIG__ || {}
+
+    if (!config.supabaseUrl || !config.supabaseAnonKey) {
+        return {
+            error: 'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel, then redeploy or restart `vercel dev`.'
+        }
+    }
+
+    return { config }
+}
+
+const runtime = getRuntimeConfig()
+const sb = runtime.config
+    ? window.supabase.createClient(runtime.config.supabaseUrl, runtime.config.supabaseAnonKey)
+    : null
+
+if (!sb) {
+    errorMsg.textContent = runtime.error
+    errorMsg.classList.remove('hidden')
+    submitBtn.textContent = 'CONFIG REQUIRED'
+    submitBtn.disabled = true
+    emailInput.disabled = true
+    passwordInput.disabled = true
+} else {
+    // Auto-redirect if already logged in
+    ;(async () => {
+        const { data: { session } } = await sb.auth.getSession()
+        if (session) window.location.href = 'dashboard.html'
+    })()
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        errorMsg.classList.add('hidden')
+        submitBtn.textContent = 'AUTHENTICATING...'
+        submitBtn.disabled = true
+
+        const { error } = await sb.auth.signInWithPassword({
+            email: emailInput.value.trim(),
+            password: passwordInput.value
+        })
+
+        if (error) {
+            errorMsg.textContent = error.message
+            errorMsg.classList.remove('hidden')
+            submitBtn.textContent = 'AUTHENTICATE'
+            submitBtn.disabled = false
+            return
+        }
+
+        window.location.href = 'dashboard.html'
+    })
+}
+</script>
+</body>
+</html>
