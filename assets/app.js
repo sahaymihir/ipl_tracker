@@ -1,4 +1,6 @@
 (function () {
+  const AUTH_NOTICE_KEY = 'sattasheet:auth-notice'
+
   const SEED_BETS = [
     { date: '2025-03-28', lagaya: 500, banaya: 1100 },
     { date: '2025-03-29', lagaya: 300, banaya: 596 },
@@ -25,6 +27,75 @@
     { date: '2025-04-02', lagaya: 300, banaya: null },
     { date: '2025-04-02', lagaya: 200, banaya: null },
   ]
+
+  function isLocalHostname(hostname) {
+    const normalized = String(hostname || '').trim().toLowerCase()
+
+    return (
+      normalized === 'localhost' ||
+      normalized === '127.0.0.1' ||
+      normalized === '0.0.0.0' ||
+      normalized === '::1' ||
+      normalized.endsWith('.local')
+    )
+  }
+
+  function getPublicAppUrl(config) {
+    const candidate = config && config.appUrl ? String(config.appUrl).trim() : ''
+
+    if (!candidate) return ''
+
+    try {
+      const url = new URL(candidate)
+      if (isLocalHostname(url.hostname)) return ''
+      return url.toString().replace(/\/+$/, '')
+    } catch (error) {
+      return ''
+    }
+  }
+
+  function getConfirmedAt(user) {
+    if (!user) return ''
+    return user.email_confirmed_at || user.confirmed_at || ''
+  }
+
+  function isUserEmailConfirmed(user) {
+    if (!user) return false
+    if (!user.email) return true
+    return Boolean(getConfirmedAt(user))
+  }
+
+  function pushAuthNotice(notice) {
+    if (!notice || !notice.message) return
+
+    try {
+      window.sessionStorage.setItem(AUTH_NOTICE_KEY, JSON.stringify(notice))
+    } catch (error) {
+      // Ignore storage failures so auth can continue.
+    }
+  }
+
+  function consumeAuthNotice() {
+    try {
+      const rawValue = window.sessionStorage.getItem(AUTH_NOTICE_KEY)
+      if (!rawValue) return null
+      window.sessionStorage.removeItem(AUTH_NOTICE_KEY)
+      return JSON.parse(rawValue)
+    } catch (error) {
+      return null
+    }
+  }
+
+  function createVerificationNotice(user, message) {
+    return {
+      tone: 'info',
+      email: user && user.email ? user.email : '',
+      showResend: true,
+      message:
+        message ||
+        'Verify your email before continuing into the dashboard. You can resend the verification link below.'
+    }
+  }
 
   function getRuntimeConfig() {
     const config = window.__APP_CONFIG__ || {}
@@ -70,17 +141,26 @@
   }
 
   function getEmailRedirectUrl(config) {
-    const baseUrl = config && config.appUrl ? config.appUrl : window.location.origin
+    const baseUrl = getPublicAppUrl(config)
+
+    if (!baseUrl) return ''
 
     try {
       return new URL('/dashboard', baseUrl).toString()
     } catch (error) {
-      return `${window.location.origin}/dashboard`
+      return ''
     }
   }
 
   async function redirectIfSessionExists(client, targetPage) {
     const { data: { session } } = await client.auth.getSession()
+
+    if (session && !isUserEmailConfirmed(session.user)) {
+      pushAuthNotice(createVerificationNotice(session.user))
+      await client.auth.signOut()
+      return null
+    }
+
     if (session) {
       window.location.href = pageHref(targetPage || 'dashboard')
     }
@@ -93,6 +173,14 @@
       window.location.href = pageHref('index')
       return null
     }
+
+    if (!isUserEmailConfirmed(session.user)) {
+      pushAuthNotice(createVerificationNotice(session.user))
+      await client.auth.signOut()
+      window.location.href = pageHref('index')
+      return null
+    }
+
     return session
   }
 
@@ -324,10 +412,15 @@
   }
 
   window.SattaSheetApp = {
+    AUTH_NOTICE_KEY,
     SEED_BETS,
     createSupabaseClient,
     getRuntimeConfig,
     getEmailRedirectUrl,
+    getPublicAppUrl,
+    isUserEmailConfirmed,
+    pushAuthNotice,
+    consumeAuthNotice,
     redirectIfSessionExists,
     requireSession,
     signOut,

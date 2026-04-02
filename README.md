@@ -57,6 +57,7 @@ APP_URL=https://your-production-domain.vercel.app
 ```
 
 `APP_URL` should be the real deployed frontend URL you want email verification to use.
+If `APP_URL` is missing or points to a local hostname, the frontend now falls back to your Supabase `Site URL` instead of overriding verification emails with `localhost`.
 
 ### 4. Configure Supabase Auth URLs
 In Supabase Authentication -> URL Configuration:
@@ -64,6 +65,7 @@ In Supabase Authentication -> URL Configuration:
 - Add your production URL and any intentional local/preview URLs to `Redirect URLs`
 
 If you want signup emails to be sent, turn on `Confirm Email` in Supabase Auth settings.
+The app also blocks dashboard and analytics access until `email_confirmed_at` is present on the Supabase user.
 
 ### 5. Run locally
 Use Vercel so `/api/config` can inject runtime config:

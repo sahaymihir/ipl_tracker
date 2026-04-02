@@ -129,6 +129,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.resend.classList.add('hidden')
   }
 
+  function showVerificationRequired(email, message) {
+    state.pendingVerificationEmail = email || state.pendingVerificationEmail
+
+    if (state.pendingVerificationEmail && !elements.email.value.trim()) {
+      elements.email.value = state.pendingVerificationEmail
+    }
+
+    setSubmitting(false, elements.submit.dataset.defaultLabel)
+    setStatus(
+      message || 'Verify your email before continuing. Check your inbox or resend the verification link below.',
+      'info'
+    )
+    elements.resend.classList.remove('hidden')
+  }
+
+  function applyStoredAuthNotice() {
+    const notice = app.consumeAuthNotice()
+    if (!notice) return
+
+    showVerificationRequired(notice.email, notice.message)
+  }
+
   function togglePasswordVisibility(button) {
     const input = document.getElementById(button.dataset.target)
     if (!input) return
@@ -152,7 +174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSubmitting(true, 'Authenticating...')
     setStatus('', 'info')
 
-    const { error } = await client.auth.signInWithPassword({ email, password })
+    const { data, error } = await client.auth.signInWithPassword({ email, password })
 
     if (error) {
       setSubmitting(false, elements.submit.dataset.defaultLabel)
@@ -161,6 +183,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         state.pendingVerificationEmail = email
         elements.resend.classList.remove('hidden')
       }
+      return
+    }
+
+    if (!app.isUserEmailConfirmed(data && data.user)) {
+      await client.auth.signOut()
+      showVerificationRequired(email)
       return
     }
 
@@ -201,15 +229,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     setSubmitting(true, 'Creating account...')
     setStatus('', 'info')
 
+    const emailRedirectTo = app.getEmailRedirectUrl(config)
+    const options = {
+      data: {
+        full_name: fullName
+      }
+    }
+
+    if (emailRedirectTo) {
+      options.emailRedirectTo = emailRedirectTo
+    }
+
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: app.getEmailRedirectUrl(config),
-        data: {
-          full_name: fullName
-        }
-      }
+      options
     })
 
     if (error) {
@@ -220,13 +254,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     state.pendingVerificationEmail = email
 
-    if (data && data.session) {
+    if (data && data.session && app.isUserEmailConfirmed((data.session && data.session.user) || data.user)) {
       window.location.href = app.pageHref('dashboard')
       return
     }
 
+    if (data && data.session) {
+      await client.auth.signOut()
+    }
+
     setSubmitting(false, elements.submit.dataset.defaultLabel)
-    setStatus('Account created. Check your inbox for the verification email, then continue into the dashboard.', 'success')
+    setStatus(
+      emailRedirectTo
+        ? 'Account created. Check your inbox for the verification email, then continue into the dashboard.'
+        : 'Account created. Check your inbox for the verification email. This app will use your Supabase Site URL until a public APP_URL is configured.',
+      'success'
+    )
     elements.resend.classList.remove('hidden')
   }
 
@@ -241,12 +284,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.resend.disabled = true
     elements.resend.textContent = 'Sending...'
 
+    const emailRedirectTo = app.getEmailRedirectUrl(config)
+    const options = {}
+
+    if (emailRedirectTo) {
+      options.emailRedirectTo = emailRedirectTo
+    }
+
     const { error } = await client.auth.resend({
       type: 'signup',
       email,
-      options: {
-        emailRedirectTo: app.getEmailRedirectUrl(config)
-      }
+      options
     })
 
     elements.resend.disabled = false
@@ -289,4 +337,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await app.redirectIfSessionExists(client, 'dashboard')
+  applyStoredAuthNotice()
 })
