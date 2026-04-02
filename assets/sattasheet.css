@@ -718,10 +718,8 @@ button {
 
 .ledger-row {
   display: grid;
-  grid-template-columns: 7.25rem minmax(0, 1.5fr) repeat(3, minmax(6.25rem, 0.72fr)) auto;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.85rem 1rem;
+  gap: 0.7rem;
+  padding: 0.8rem 0.9rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: rgba(10, 15, 29, 0.7);
@@ -741,6 +739,13 @@ button {
 
 .ledger-row.pending {
   border-color: rgba(255, 204, 115, 0.2);
+}
+
+.ledger-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .ledger-row-date,
@@ -764,10 +769,19 @@ button {
   color: var(--text);
 }
 
+.ledger-row-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
 .ledger-row-stat {
   min-width: 0;
   display: grid;
-  gap: 0.15rem;
+  gap: 0.18rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .ledger-row-label {
@@ -789,7 +803,7 @@ button {
 .feed-head-actions {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.6rem;
   flex-wrap: wrap;
 }
@@ -799,6 +813,10 @@ button {
   font-size: 0.68rem;
   letter-spacing: 0.14em;
   white-space: nowrap;
+}
+
+.entry-inline-button.is-danger {
+  color: var(--danger);
 }
 
 .feed-head,
@@ -1778,28 +1796,33 @@ button {
   }
 
   .ledger-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    padding: 0.72rem 0.78rem;
+  }
+
+  .ledger-row-top {
     align-items: start;
   }
 
-  .ledger-row-date {
-    grid-column: 1 / -1;
-  }
-
   .ledger-row-title {
-    grid-column: 1 / -1;
     white-space: normal;
+    font-size: 0.92rem;
   }
 
-  .ledger-row-actions {
-    grid-column: 1 / -1;
-    justify-self: start;
+  .ledger-row-stats {
+    gap: 0.45rem;
   }
 
   .ledger-row-stat {
-    grid-template-columns: 4.9rem max-content;
-    align-items: baseline;
-    gap: 0.45rem;
+    padding: 0.48rem 0.52rem;
+  }
+
+  .ledger-row-value {
+    font-size: 0.86rem;
+  }
+
+  .ledger-row-actions {
+    gap: 0.7rem;
   }
 
   .chart-top,

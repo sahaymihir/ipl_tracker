@@ -99,6 +99,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `Settled ledger #${index + 1}`
   }
 
+  function getDeleteLabel(bet) {
+    if (bet.match_label && String(bet.match_label).trim()) {
+      return String(bet.match_label).trim()
+    }
+
+    return `${app.formatDate(bet.date)} · ₹${app.formatAmount(bet.lagaya)} stake`
+  }
+
   function showFatal(error) {
     const setupState = app.isMissingBetsTableError(error)
       ? app.getBetsSetupState('dashboard')
@@ -233,6 +241,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     openDrawer({ bet })
+  }
+
+  async function handleDeleteBet(betId, triggerButton) {
+    const bet = findBetById(betId)
+
+    if (!bet) {
+      showStatus('That bet could not be found anymore. Refresh and try again.', 'error')
+      return
+    }
+
+    const label = getDeleteLabel(bet)
+    const firstConfirmation = window.confirm(
+      `Delete the bet "${label}" from ${app.formatDate(bet.date)}? This will remove it from your ledger history.`
+    )
+
+    if (!firstConfirmation) return
+
+    const secondConfirmation = window.confirm(
+      `Final confirmation: permanently delete "${label}"? This action cannot be undone.`
+    )
+
+    if (!secondConfirmation) return
+
+    if (triggerButton) {
+      triggerButton.disabled = true
+    }
+
+    const { error } = await client
+      .from('bets')
+      .delete()
+      .eq('id', bet.id)
+      .eq('user_id', state.user.id)
+
+    if (triggerButton) {
+      triggerButton.disabled = false
+    }
+
+    if (error) {
+      showStatus(app.getErrorMessage(error, 'Unable to delete the bet right now.'), 'error')
+      return
+    }
+
+    if (state.editingBetId && String(state.editingBetId) === String(bet.id)) {
+      closeDrawer()
+    }
+
+    showStatus('Bet deleted successfully.', 'success')
+    await refresh()
   }
 
   function closeDrawer() {
@@ -405,30 +461,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       const label = app.escapeHtml(fallbackLabel(bet, index))
       const returnValue = bet.banaya == null ? 'Awaiting' : `₹${app.formatAmount(bet.banaya)}`
       const netValue = result === 'pending' ? 'Pending' : formatSigned(net, false)
-      const actions = result === 'pending'
-        ? `
-          <div class="ledger-row-actions">
-            <button class="text-button entry-inline-button" data-edit-bet="${bet.id}" type="button">Edit</button>
-            <span class="result-pill ${result}">${result}</span>
-          </div>
-        `
-        : `<span class="result-pill ${result}">${result}</span>`
+      const actions = `
+        <div class="ledger-row-actions">
+          ${result === 'pending'
+            ? `<button class="text-button entry-inline-button" data-edit-bet="${bet.id}" type="button">Edit</button>`
+            : ''}
+          <button class="text-button entry-inline-button is-danger" data-delete-bet="${bet.id}" type="button">Delete</button>
+        </div>
+      `
 
       return `
         <article class="ledger-row ${result}">
-          <div class="ledger-row-date">${app.formatDate(bet.date)}</div>
+          <div class="ledger-row-top">
+            <div class="ledger-row-date">${app.formatDate(bet.date)}</div>
+            <span class="result-pill ${result}">${result}</span>
+          </div>
           <div class="ledger-row-title" title="${label}">${label}</div>
-          <div class="ledger-row-stat">
-            <span class="ledger-row-label">Lagaya</span>
-            <strong class="ledger-row-value">₹${app.formatAmount(bet.lagaya)}</strong>
-          </div>
-          <div class="ledger-row-stat">
-            <span class="ledger-row-label">Banaya</span>
-            <strong class="ledger-row-value ${result === 'pending' ? 'value-pending' : ''}">${returnValue}</strong>
-          </div>
-          <div class="ledger-row-stat">
-            <span class="ledger-row-label">Net</span>
-            <strong class="ledger-row-value ${result === 'pending' ? 'value-pending' : net >= 0 ? 'value-positive' : 'value-negative'}">${netValue}</strong>
+          <div class="ledger-row-stats">
+            <div class="ledger-row-stat">
+              <span class="ledger-row-label">Lagaya</span>
+              <strong class="ledger-row-value">₹${app.formatAmount(bet.lagaya)}</strong>
+            </div>
+            <div class="ledger-row-stat">
+              <span class="ledger-row-label">Banaya</span>
+              <strong class="ledger-row-value ${result === 'pending' ? 'value-pending' : ''}">${returnValue}</strong>
+            </div>
+            <div class="ledger-row-stat">
+              <span class="ledger-row-label">Net</span>
+              <strong class="ledger-row-value ${result === 'pending' ? 'value-pending' : net >= 0 ? 'value-positive' : 'value-negative'}">${netValue}</strong>
+            </div>
           </div>
           ${actions}
         </article>
@@ -469,6 +530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
           <div class="feed-head-actions">
             <button class="text-button entry-inline-button" data-edit-bet="${bet.id}" type="button">Edit</button>
+            <button class="text-button entry-inline-button is-danger" data-delete-bet="${bet.id}" type="button">Delete</button>
             <span class="result-pill pending">Pending</span>
           </div>
         </div>
@@ -644,14 +706,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   elements.cancelDrawer.addEventListener('click', closeDrawer)
   elements.drawerScrim.addEventListener('click', closeDrawer)
   elements.activityList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-edit-bet]')
-    if (!button) return
-    openEditDrawer(button.dataset.editBet)
+    const deleteButton = event.target.closest('[data-delete-bet]')
+    if (deleteButton) {
+      void handleDeleteBet(deleteButton.dataset.deleteBet, deleteButton)
+      return
+    }
+
+    const editButton = event.target.closest('[data-edit-bet]')
+    if (!editButton) return
+    openEditDrawer(editButton.dataset.editBet)
   })
   elements.liveList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-edit-bet]')
-    if (!button) return
-    openEditDrawer(button.dataset.editBet)
+    const deleteButton = event.target.closest('[data-delete-bet]')
+    if (deleteButton) {
+      void handleDeleteBet(deleteButton.dataset.deleteBet, deleteButton)
+      return
+    }
+
+    const editButton = event.target.closest('[data-edit-bet]')
+    if (!editButton) return
+    openEditDrawer(editButton.dataset.editBet)
   })
   elements.activityShowMore.addEventListener('click', revealMoreActivity)
   elements.formLagaya.addEventListener('input', updateProjectedNet)
