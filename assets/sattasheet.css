@@ -1797,7 +1797,7 @@ button {
   }
 
   .ledger-row-stat {
-    grid-template-columns: auto auto;
+    grid-template-columns: 4.9rem max-content;
     align-items: baseline;
     gap: 0.45rem;
   }
