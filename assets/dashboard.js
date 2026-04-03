@@ -25,9 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     heroCopy: document.getElementById('hero-copy'),
     heroSpark: document.getElementById('hero-spark'),
     welcomeName: document.getElementById('welcome-name'),
-    userBadge: document.getElementById('user-badge'),
-    userName: document.getElementById('user-name'),
-    userEmail: document.getElementById('user-email'),
     metricInvested: document.getElementById('metric-invested'),
     metricReturned: document.getElementById('metric-returned'),
     metricWinRate: document.getElementById('metric-win-rate'),
@@ -36,22 +33,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     barReturned: document.getElementById('bar-returned'),
     barWinRate: document.getElementById('bar-win-rate'),
     barAverage: document.getElementById('bar-average'),
-    pulseList: document.getElementById('pulse-list'),
     activityList: document.getElementById('activity-list'),
     activityCount: document.getElementById('activity-count'),
     activityMoreWrap: document.getElementById('activity-more-wrap'),
     activityShowMore: document.getElementById('activity-show-more'),
     liveList: document.getElementById('live-list'),
     liveCount: document.getElementById('live-count'),
-    accountDays: document.getElementById('account-days'),
-    accountTotalBets: document.getElementById('account-total-bets'),
-    accountExposure: document.getElementById('account-exposure'),
-    accountBestDay: document.getElementById('account-best-day'),
-    accountWorstDay: document.getElementById('account-worst-day'),
-    accountStreak: document.getElementById('account-streak'),
-    accountSummaryList: document.getElementById('account-summary-list'),
-    accountDailyList: document.getElementById('account-daily-list'),
-    accountSummaryBar: document.getElementById('account-summary-bar'),
     drawer: document.getElementById('entry-drawer'),
     drawerScrim: document.getElementById('entry-drawer-scrim'),
     drawerKicker: document.getElementById('drawer-kicker'),
@@ -72,15 +59,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     filterButtons: document.querySelectorAll('[data-filter]'),
     navLinks: document.querySelectorAll('[data-nav-link]'),
     lastUpdated: document.getElementById('last-updated')
-  }
-
-  function getInitials(name) {
-    return String(name || 'Operator')
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0].toUpperCase())
-      .join('')
   }
 
   function formatSigned(value, compact) {
@@ -163,7 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function syncHashNavigation() {
     const current = (window.location.hash || '#ledger').replace('#', '') || 'ledger'
-    const activeSection = 'ledger'
+    const activeSection = current === 'live' ? 'live' : 'ledger'
 
     elements.navLinks.forEach((link) => {
       const target = link.dataset.navLink
@@ -369,33 +347,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     `
   }
 
-  function renderPulse() {
-    const recentDays = [...state.stats.daily].slice(-4).reverse()
-
-    if (!recentDays.length) {
-      elements.pulseList.innerHTML = `
-        <div class="empty-state">
-          <span class="material-symbols-outlined">monitoring</span>
-          <h3>Waiting for the first day</h3>
-          <p class="empty-copy">Daily pulse cards appear as soon as entries are logged.</p>
-        </div>
-      `
-      return
-    }
-
-    elements.pulseList.innerHTML = recentDays.map((day) => `
-      <div class="preview-ticker">
-        <div class="preview-list-item">
-          <div>
-            <div class="meta-label">${app.formatDate(day.date)}</div>
-            <strong>${day.totalBets} ${day.totalBets === 1 ? 'entry' : 'entries'}</strong>
-          </div>
-          <strong class="${day.netProfit >= 0 ? 'value-positive' : 'value-negative'}">${formatSigned(day.netProfit, true)}</strong>
-        </div>
-      </div>
-    `).join('')
-  }
-
   function renderHero() {
     const { netProfit, roi, openExposure, trackedDays, totalBets } = state.stats
     const displayName = app.getDisplayName(state.user)
@@ -404,9 +355,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       : 'You are ready to start logging live entries.'
 
     elements.welcomeName.textContent = displayName
-    elements.userName.textContent = displayName
-    elements.userEmail.textContent = state.user.email || 'No email on file'
-    elements.userBadge.textContent = getInitials(displayName)
     elements.heroNet.textContent = formatSigned(netProfit, false)
     elements.heroNet.className = `hero-value ${netProfit >= 0 ? 'value-positive' : 'value-negative'}`
     elements.heroNetTone.textContent = `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}% ROI`
@@ -552,63 +500,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     `).join('')
   }
 
-  function renderAccount() {
-    const { trackedDays, totalBets, openExposure, peakDay, worstDay, streak, streakType, daily, netProfit } = state.stats
-    elements.accountDays.textContent = String(trackedDays)
-    elements.accountTotalBets.textContent = String(totalBets)
-    elements.accountExposure.textContent = `₹${app.formatAmount(openExposure)}`
-    elements.accountBestDay.textContent = peakDay ? formatSigned(peakDay.netProfit, false) : '—'
-    elements.accountBestDay.className = `summary-value ${peakDay && peakDay.netProfit >= 0 ? 'value-positive' : ''}`
-    elements.accountWorstDay.textContent = worstDay ? formatSigned(worstDay.netProfit, false) : '—'
-    elements.accountWorstDay.className = `summary-value ${worstDay && worstDay.netProfit < 0 ? 'value-negative' : ''}`
-    elements.accountStreak.textContent = streak ? `${streak} ${streakType || 'settled'}` : 'No streak'
-    elements.accountSummaryBar.style.width = `${Math.min(Math.abs(netProfit) / Math.max(state.stats.returned || 1, 1) * 100, 100).toFixed(1)}%`
-
-    elements.accountSummaryList.innerHTML = `
-      <div class="summary-row">
-        <span class="meta-label">Best day</span>
-        <strong>${peakDay ? `${app.formatDate(peakDay.date)} · ${formatSigned(peakDay.netProfit, false)}` : 'No settled days yet'}</strong>
-      </div>
-      <div class="summary-row">
-        <span class="meta-label">Worst day</span>
-        <strong>${worstDay ? `${app.formatDate(worstDay.date)} · ${formatSigned(worstDay.netProfit, false)}` : 'No settled days yet'}</strong>
-      </div>
-      <div class="summary-row">
-        <span class="meta-label">Current streak</span>
-        <strong>${streak ? `${streak} ${streakType}` : 'No streak yet'}</strong>
-      </div>
-    `
-
-    const dailyPreview = [...daily].slice(-5).reverse()
-    elements.accountDailyList.innerHTML = dailyPreview.length
-      ? dailyPreview.map((day) => `
-        <div class="breakdown-row ${day.pendingCount ? 'pending' : day.netProfit >= 0 ? 'positive' : 'negative'}">
-          <div class="preview-list-item">
-            <div>
-              <div class="meta-label">${app.formatDate(day.date)}</div>
-              <strong>${day.totalBets} ${day.totalBets === 1 ? 'entry' : 'entries'}</strong>
-            </div>
-            <strong class="${day.netProfit >= 0 ? 'value-positive' : 'value-negative'}">${formatSigned(day.netProfit, false)}</strong>
-          </div>
-        </div>
-      `).join('')
-      : `
-        <div class="empty-state">
-          <span class="material-symbols-outlined">calendar_month</span>
-          <h3>No daily breakdown yet</h3>
-          <p class="empty-copy">Once entries exist, each tracked day is summarized here.</p>
-        </div>
-      `
-  }
-
   function renderAll() {
     state.stats = app.computeBetStats(state.bets)
     renderHero()
     renderMetrics()
-    renderPulse()
     renderActivity()
     renderLive()
-    renderAccount()
   }
 
   async function refresh() {

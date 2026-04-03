@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SattaSheet | Dashboard</title>
-  <meta name="description" content="Operational SattaSheet dashboard for live ledger tracking, open exposure, account summary, and Supabase-backed entry logging.">
+  <meta name="description" content="Operational SattaSheet dashboard for live ledger tracking, open exposure, and Supabase-backed entry logging.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -32,7 +32,6 @@
         <a class="is-active" data-nav-link="ledger" href="#ledger">Ledger</a>
         <a data-nav-link="live" href="#live">Live</a>
         <a href="/analytics">Analytics</a>
-        <a data-nav-link="account" href="#account">Account</a>
       </nav>
 
       <div class="header-actions">
@@ -55,7 +54,7 @@
             <div>
               <div class="kicker">Command Layer</div>
               <h1 class="hero-title">Live ledger intelligence for every entry you place.</h1>
-              <p class="hero-subtitle" id="hero-copy">Tracking your Supabase-backed entries and translating them into a sharper read on exposure, rhythm, and edge.</p>
+              <p class="hero-subtitle" id="hero-copy">Tracking your Supabase-backed entries and keeping exposure, settlements, and live positions easy to act on.</p>
             </div>
             <div class="chip-row">
               <span class="chip">Net <strong id="hero-net">+₹0</strong></span>
@@ -114,29 +113,10 @@
           </div>
         </div>
 
-        <div class="ledger-layout">
-          <div class="feed-stack">
-            <div class="feed-stack" id="activity-list"></div>
-            <div class="activity-more" id="activity-more-wrap" hidden>
-              <button class="ghost-button activity-more-button" id="activity-show-more" type="button">Show 5 more bets</button>
-            </div>
-          </div>
-          <div class="summary-stack">
-            <article class="summary-card accent">
-              <div class="kicker">Pulse</div>
-              <h3 class="panel-title">Daily rhythm</h3>
-              <p class="summary-copy">A quick scan of the latest tracked days so you can spot when the ledger is heating up.</p>
-              <div class="detail-list" id="pulse-list"></div>
-            </article>
-            <article class="summary-card">
-              <div class="kicker">Route Split</div>
-              <h3 class="panel-title">Next action</h3>
-              <p class="summary-copy">Use the dashboard for operations and the analytics route for deeper pattern review.</p>
-              <div class="auth-footer-row">
-                <button class="ghost-button" data-open-drawer type="button">Add entry</button>
-                <a class="ghost-button" href="/analytics">View analytics</a>
-              </div>
-            </article>
+        <div class="feed-stack">
+          <div id="activity-list"></div>
+          <div class="activity-more" id="activity-more-wrap" hidden>
+            <button class="ghost-button activity-more-button" id="activity-show-more" type="button">Show 5 more bets</button>
           </div>
         </div>
       </section>
@@ -153,78 +133,6 @@
         <div class="feed-stack" id="live-list"></div>
       </section>
 
-      <section class="section" id="account">
-        <div class="section-header">
-          <div>
-            <div class="kicker">Operator Profile</div>
-            <h2 class="section-title">Account summary</h2>
-            <p class="section-copy">Your identity, ledger footprint, and the highest-signal account markers in one place.</p>
-          </div>
-        </div>
-
-        <div class="account-layout">
-          <article class="summary-card accent profile-card">
-            <div class="split-row">
-              <div class="profile-badge" id="user-badge">OP</div>
-              <div class="profile-meta">
-                <div class="kicker">Supabase Identity</div>
-                <h3 id="user-name">Operator</h3>
-                <p id="user-email">operator@sattasheet.app</p>
-              </div>
-            </div>
-
-            <div class="grid-two">
-              <div class="detail-card">
-                <span class="meta-label">Tracked Days</span>
-                <strong class="summary-value" id="account-days">0</strong>
-              </div>
-              <div class="detail-card">
-                <span class="meta-label">Total Entries</span>
-                <strong class="summary-value" id="account-total-bets">0</strong>
-              </div>
-              <div class="detail-card">
-                <span class="meta-label">Open Exposure</span>
-                <strong class="summary-value" id="account-exposure">₹0</strong>
-              </div>
-              <div class="detail-card">
-                <span class="meta-label">Current Streak</span>
-                <strong class="summary-value" id="account-streak">No streak</strong>
-              </div>
-            </div>
-
-            <div>
-              <div class="meta-label">Account Edge Meter</div>
-              <div class="summary-line"><span id="account-summary-bar"></span></div>
-            </div>
-
-            <div class="detail-list" id="account-summary-list"></div>
-
-            <div class="auth-footer-row">
-              <button class="ghost-button" data-signout type="button">Sign out</button>
-              <a class="ghost-button" href="/analytics">Analytics route</a>
-            </div>
-          </article>
-
-          <div class="summary-stack">
-            <article class="summary-card">
-              <div class="kicker">Best Day</div>
-              <div class="summary-value" id="account-best-day">—</div>
-              <p class="summary-copy">Highest positive day across the currently loaded ledger history.</p>
-            </article>
-            <article class="summary-card">
-              <div class="kicker">Worst Day</div>
-              <div class="summary-value" id="account-worst-day">—</div>
-              <p class="summary-copy">Largest downside day, useful for calibrating risk and stake sizing.</p>
-            </article>
-            <article class="summary-card">
-              <div class="kicker">Recent Daily Summary</div>
-              <h3 class="panel-title">Last tracked days</h3>
-              <p class="summary-copy">A compact per-day readout before you jump into deeper analytics.</p>
-              <div class="detail-list" id="account-daily-list"></div>
-            </article>
-          </div>
-        </div>
-      </section>
     </main>
   </div>
 

@@ -1,6 +1,6 @@
 # SattaSheet
 
-SattaSheet is a Vercel + Supabase betting ledger with a fully redesigned dark UI, live auth flows, a real operational dashboard, and a dedicated analytics route.
+SattaSheet is a Vercel + Supabase betting ledger with a fully redesigned dark UI, live auth flows, an operations-first dashboard, and a dedicated analytics route.
 
 ## Stack
 - Frontend: HTML, custom CSS, vanilla JavaScript
@@ -11,8 +11,8 @@ SattaSheet is a Vercel + Supabase betting ledger with a fully redesigned dark UI
 
 ## Routes
 - `/` -> auth terminal with sign in / create account panels
-- `/dashboard` -> live ledger, open positions, account summary, add-entry drawer
-- `/analytics` -> equity curve, daily P&L, flow chart, result distribution
+- `/dashboard` -> live ledger, open positions, and add-entry drawer
+- `/analytics` -> deeper performance review with equity curve, daily P&L, flow chart, and result distribution
 
 ## Setup
 
